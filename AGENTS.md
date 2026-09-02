@@ -10,6 +10,9 @@ browser, shared as a link, and destroyed after it is read or when its timer runs
 - Deployment configuration: `wrangler.jsonc`.
 - Deployment trigger: GitHub Actions (`.github/workflows/deploy.yml`), not the Cloudflare
   Git integration — Workers Builds does not apply D1 migrations.
+- Custom domain: attached in the Cloudflare dashboard, not declared in `wrangler.jsonc`,
+  as in every other project here. This keeps the CI token to Workers Scripts and D1, with
+  no zone-level write access.
 - Closest sibling project for architecture: `../orator-space` (D1, Crockford base32 ids).
 - Closest sibling project for design language: `../pass.airat.top`.
 

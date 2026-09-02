@@ -38,7 +38,12 @@
   // if this never fires. The cron is what stops expired rows accumulating in D1.
   "triggers": {
     "crons": ["*/15 * * * *"]
-  },
+  }
 
-  "routes": [{ "pattern": "secret.airat.top", "custom_domain": true }]
+  // No `routes` block, matching every other project in this workspace: the custom domain
+  // is attached once in the Cloudflare dashboard rather than declared here. Declaring it
+  // would make each deploy call the zone API, so the CI token would need
+  // `Zone -> Workers Routes -> Edit` on airat.top — which is DNS-adjacent write access
+  // handed to a token that lives in GitHub. For this project in particular that is a bad
+  // trade: a leaked token should not be able to repoint the domain people send secrets to.
 }
