@@ -173,6 +173,34 @@ textarea:focus, input:focus, select:focus { outline: none; border-color: var(--a
 
 .actions { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
 
+/* The optional half of the form, closed by default. */
+.extras { border-top: 1px solid var(--border); padding-top: 16px; }
+.extras > summary {
+  cursor: pointer;
+  font-size: 0.9rem;
+  color: var(--muted);
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.extras > summary::-webkit-details-marker { display: none; }
+.extras > summary::before {
+  content: "+";
+  display: inline-grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 0.85rem;
+  line-height: 1;
+}
+.extras[open] > summary::before { content: "−"; }
+.extras > summary:hover { color: var(--accent); }
+.extras[open] > summary { margin-bottom: 16px; color: var(--text); }
+.extras .field + .field { margin-top: 16px; }
+
 button.primary {
   padding: 12px 22px;
   border: none;
@@ -189,37 +217,86 @@ button.danger { border-color: var(--danger); color: var(--danger); }
 
 /* Result and reveal */
 
-.secret-link {
-  display: flex;
+/*
+ * The one-time link, which is a button rather than a box with a button beside it.
+ * Sized and coloured as the loudest thing on the card, because copying it is the only
+ * thing to do here and losing it is unrecoverable.
+ */
+.link-copy {
+  display: grid;
   gap: 10px;
-  align-items: center;
-  padding: 12px 14px;
-  border: 1px dashed var(--accent);
-  border-radius: 12px;
+  width: 100%;
+  padding: 16px 18px;
+  border: 1px solid var(--accent);
+  border-radius: 14px;
   background: var(--chip);
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
+}
+.link-copy:hover { background: var(--surface-strong); box-shadow: 0 0 0 4px var(--focus); }
+.link-copy:focus-visible { outline: none; box-shadow: 0 0 0 4px var(--focus); }
+.link-copy:active { transform: translateY(1px); }
+
+.link-copy-url {
   font-family: "JetBrains Mono", ui-monospace, monospace;
-  font-size: 0.88rem;
+  font-size: 0.86rem;
+  line-height: 1.55;
   word-break: break-all;
 }
 
-.secret-output {
-  padding: 16px;
-  border-radius: 12px;
-  background: var(--surface-strong);
-  border: 1px solid var(--border);
-  font-family: "JetBrains Mono", ui-monospace, monospace;
+/* The affordance and the confirmation are the same element, so the click answers itself
+   in the place the eye already is, instead of in a status line further down. */
+.link-copy-cue {
+  justify-self: start;
+  font-size: 0.78rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.link-copy.is-copied { border-color: var(--success); }
+.link-copy.is-copied .link-copy-cue { color: var(--success); }
+
+/* Destructive, and deliberately quiet until you go near it: nothing on this card should
+   compete with the link for attention. */
+.link-danger {
+  padding: 9px 14px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: none;
+  color: var(--muted);
+  font-family: inherit;
+  font-size: 0.88rem;
+  cursor: pointer;
+}
+.link-danger:hover:not(:disabled) { border-color: var(--danger); color: var(--danger); }
+.link-danger:disabled { opacity: 0.5; cursor: default; }
+
+/* A revealed secret is prose or a credential, not a URL: wrap on spaces, keep newlines. */
+.link-copy-url.is-text {
   font-size: 0.95rem;
   white-space: pre-wrap;
   word-break: break-word;
 }
 
+.block-label { margin: 0; font-size: 0.9rem; font-weight: 500; }
+
 .meta-list { display: flex; gap: 8px; flex-wrap: wrap; margin: 0; padding: 0; list-style: none; }
 .meta-list li {
-  padding: 5px 11px;
+  padding: 6px 12px;
   border-radius: 999px;
-  background: var(--chip);
+  background: var(--surface-strong);
+  border: 1px solid var(--border);
   font-size: 0.82rem;
   color: var(--muted);
+}
+.meta-list li b {
+  color: var(--text);
+  font-weight: 500;
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 0.8rem;
 }
 
 .notice { margin: 0; font-size: 0.88rem; color: var(--muted); }

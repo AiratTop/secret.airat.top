@@ -6,6 +6,7 @@
  */
 
 import { encryptText, encryptWith } from "/crypto.js";
+import { formatDateTime, formatRelative } from "/format.js";
 
 const els = {
   secret: document.getElementById("secretInput"),
@@ -18,9 +19,10 @@ const els = {
   composeCard: document.getElementById("composeCard"),
   resultCard: document.getElementById("resultCard"),
   resultLink: document.getElementById("resultLink"),
+  resultLinkText: document.getElementById("resultLinkText"),
+  copyState: document.getElementById("copyState"),
   resultMeta: document.getElementById("resultMeta"),
   resultNotice: document.getElementById("resultNotice"),
-  copy: document.getElementById("copyButton"),
   burn: document.getElementById("burnButton"),
   again: document.getElementById("newButton"),
   sizeHint: document.getElementById("sizeHint")
@@ -114,17 +116,21 @@ async function create() {
 }
 
 function showResult() {
-  els.resultLink.textContent = created.url;
+  els.resultLinkText.textContent = created.url;
+  resetCopyState();
   els.resultMeta.innerHTML = "";
 
   const items = [
-    created.maxViews === 1 ? "Burns after one read" : `Opens up to ${created.maxViews} times`,
-    `Expires ${new Date(created.expiresAt).toLocaleString()}`,
-    els.passphrase.value ? "Passphrase required" : "Link only"
+    [created.maxViews === 1 ? "Burns after" : "Opens", created.maxViews === 1 ? "1 read" : `${created.maxViews}×`],
+    ["Expires", `${formatDateTime(created.expiresAt)} · ${formatRelative(created.expiresAt)}`],
+    [els.passphrase.value ? "Needs" : "Opens with", els.passphrase.value ? "passphrase" : "link only"]
   ];
-  for (const item of items) {
+  for (const [caption, value] of items) {
     const node = document.createElement("li");
-    node.textContent = item;
+    node.append(`${caption} `);
+    const strong = document.createElement("b");
+    strong.textContent = value;
+    node.append(strong);
     els.resultMeta.append(node);
   }
 
@@ -135,6 +141,40 @@ function showResult() {
   // The plaintext has no reason to stay in the DOM once the link exists.
   els.secret.value = "";
   els.passphrase.value = "";
+}
+
+let copyResetTimer = null;
+
+function resetCopyState() {
+  clearTimeout(copyResetTimer);
+  els.resultLink.classList.remove("is-copied");
+  els.copyState.textContent = "Click to copy";
+}
+
+/**
+ * Copying answers in the element that was clicked. `navigator.clipboard` needs a secure
+ * context and a permission that can be refused, so the failure path leaves the link
+ * selectable and says to copy it by hand rather than pretending it worked.
+ */
+async function copyLink() {
+  try {
+    await navigator.clipboard.writeText(created.url);
+    els.resultLink.classList.add("is-copied");
+    els.copyState.textContent = "Copied";
+    clearTimeout(copyResetTimer);
+    copyResetTimer = setTimeout(resetCopyState, 2500);
+  } catch {
+    els.copyState.textContent = "Press ⌘C / Ctrl+C to copy";
+    selectLinkText();
+  }
+}
+
+function selectLinkText() {
+  const range = document.createRange();
+  range.selectNodeContents(els.resultLinkText);
+  const selection = getSelection();
+  selection.removeAllRanges();
+  selection.addRange(range);
 }
 
 async function burn() {
@@ -153,10 +193,7 @@ async function burn() {
 }
 
 els.create.addEventListener("click", create);
-els.copy.addEventListener("click", async () => {
-  await navigator.clipboard.writeText(created.url);
-  notice(els.resultNotice, "Copied.", "success");
-});
+els.resultLink.addEventListener("click", copyLink);
 els.burn.addEventListener("click", burn);
 els.again.addEventListener("click", () => {
   created = null;

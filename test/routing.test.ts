@@ -61,11 +61,52 @@ describe("the landing page", () => {
     expect(response.headers.get("x-robots-tag")).toBeNull();
   });
 
+  it("allows a crawler the assets it needs to render the page", async () => {
+    const robots = await (await call("/robots.txt")).text();
+    const html = await (await call("/")).text();
+    const assets = [...html.matchAll(/(?:src|href)="(\/[^"]+\.(?:js|css))"/g)].map((m) => m[1]);
+
+    expect(assets.length).toBeGreaterThan(0);
+    for (const asset of assets) expect(robots, `${asset} is blocked`).toContain(`Allow: ${asset}`);
+  });
+
   it("loads no third-party script", async () => {
     const html = await (await call("/")).text();
     const scripts = [...html.matchAll(/<script[^>]*src="([^"]*)"/g)].map((m) => m[1]);
     for (const src of scripts) expect(src.startsWith("/")).toBe(true);
     expect(html).not.toContain("googletagmanager.com");
+  });
+});
+
+/**
+ * The pages and their scripts are joined only by string ids, and nothing else checks that
+ * the join holds — rename an element and the page keeps serving, keeps passing every other
+ * test, and throws on the first click instead.
+ */
+describe("the scripts and the markup agree", () => {
+  const pages: [string, string][] = [
+    ["/index.html", "/app.js"],
+    ["/view.html", "/view.js"]
+  ];
+
+  it.each(pages)("every id %s's script reads exists in it", async (page, script) => {
+    const markup = await (await call(page)).text();
+    const code = await (await call(script)).text();
+
+    const wanted = [...code.matchAll(/getElementById\("([^"]+)"\)/g)].map((m) => m[1]!);
+    const present = new Set([...markup.matchAll(/id="([^"]+)"/g)].map((m) => m[1]!));
+
+    expect(wanted.length).toBeGreaterThan(0);
+    for (const id of wanted) expect(present, `${script} reads #${id}`).toContain(id);
+  });
+
+  it.each(pages)("%s imports only modules this origin serves", async (page) => {
+    const markup = await (await call(page)).text();
+    const modules = [...markup.matchAll(/<script[^>]*src="([^"]+)"/g)].map((m) => m[1]!);
+    for (const src of modules) {
+      expect(src.startsWith("/")).toBe(true);
+      expect((await call(src)).status, `${src} is referenced but not served`).toBe(200);
+    }
   });
 });
 

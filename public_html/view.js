@@ -8,6 +8,7 @@
  */
 
 import { decryptText, decryptLabel } from "/crypto.js";
+import { formatDateTime, formatRelative } from "/format.js";
 
 const els = {
   headline: document.getElementById("headline"),
@@ -20,9 +21,10 @@ const els = {
   reveal: document.getElementById("revealButton"),
   secretCard: document.getElementById("secretCard"),
   secretLabel: document.getElementById("secretLabel"),
+  secretBlock: document.getElementById("secretBlock"),
   secretOutput: document.getElementById("secretOutput"),
+  secretCopyState: document.getElementById("secretCopyState"),
   secretNotice: document.getElementById("secretNotice"),
-  copy: document.getElementById("copyButton"),
   goneCard: document.getElementById("goneCard"),
   goneMessage: document.getElementById("goneMessage")
 };
@@ -66,12 +68,17 @@ async function load() {
 
   els.gateMeta.innerHTML = "";
   const items = [
-    meta.maxViews === 1 ? "Burns after this read" : `${meta.viewsLeft} of ${meta.maxViews} views left`,
-    `Expires ${new Date(meta.expiresAt).toLocaleString()}`
+    meta.maxViews === 1
+      ? ["Burns after", "this read"]
+      : ["Views left", `${meta.viewsLeft} of ${meta.maxViews}`],
+    ["Expires", `${formatDateTime(meta.expiresAt)} · ${formatRelative(meta.expiresAt)}`]
   ];
-  for (const item of items) {
+  for (const [caption, value] of items) {
     const node = document.createElement("li");
-    node.textContent = item;
+    node.append(`${caption} `);
+    const strong = document.createElement("b");
+    strong.textContent = value;
+    node.append(strong);
     els.gateMeta.append(node);
   }
 
@@ -139,10 +146,39 @@ async function reveal() {
   }
 }
 
+let copyResetTimer = null;
+
+/**
+ * Copies the whole secret, unless the reader was in the middle of selecting part of it —
+ * a click that ends a drag-selection means "I want this bit", and overwriting the
+ * clipboard with everything would be the opposite of what was asked.
+ */
+async function copySecret() {
+  if (String(getSelection() ?? "").length > 0) return;
+
+  try {
+    await navigator.clipboard.writeText(els.secretOutput.textContent);
+    els.secretBlock.classList.add("is-copied");
+    els.secretCopyState.textContent = "Copied";
+    clearTimeout(copyResetTimer);
+    copyResetTimer = setTimeout(() => {
+      els.secretBlock.classList.remove("is-copied");
+      els.secretCopyState.textContent = "Click to copy";
+    }, 2500);
+  } catch {
+    // A refused clipboard permission is not a failure to report as an error — the text is
+    // right there and selectable.
+    els.secretCopyState.textContent = "Press ⌘C / Ctrl+C to copy";
+  }
+}
+
 els.reveal.addEventListener("click", reveal);
-els.copy.addEventListener("click", async () => {
-  await navigator.clipboard.writeText(els.secretOutput.textContent);
-  notice(els.secretNotice, "Copied.", "success");
+els.secretBlock.addEventListener("click", copySecret);
+els.secretBlock.addEventListener("keydown", (event) => {
+  if (event.key === "Enter" || event.key === " ") {
+    event.preventDefault();
+    copySecret();
+  }
 });
 
 load().catch(() => showGone("Could not reach the server."));

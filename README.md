@@ -6,7 +6,8 @@ A password, a token, or a note is encrypted in your browser, stored as ciphertex
 handed over as a link that destroys itself — after one read by default, or when its timer
 runs out.
 
-**Live:** https://secret.airat.top
+- Live site: https://secret.airat.top
+- Status page: https://status.airat.top
 
 ## How it works
 
@@ -82,3 +83,12 @@ here follows Yopass and Hemmelig.
 ## License
 
 Apache License 2.0 — see [LICENSE](LICENSE) and [NOTICE](NOTICE).
+
+## Author
+
+**AiratTop (Airat Halitov)**
+
+- Website: [airat.top](https://airat.top)
+- GitHub: [@AiratTop](https://github.com/AiratTop)
+- Email: [mail@airat.top](mailto:mail@airat.top)
+- Repository: [secret.airat.top](https://github.com/AiratTop/secret.airat.top)
