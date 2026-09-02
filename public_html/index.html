@@ -72,6 +72,10 @@
           </p>
         </div>
         <div class="brand-actions">
+          <!-- Hidden while the form is on screen: there is nothing to go back to, and a
+               button labelled "Create secret" sitting above a half-typed secret is an
+               invitation to lose it. It appears with the result card. -->
+          <button class="repo-link" id="newButton" type="button" hidden>Create secret</button>
           <a class="repo-link" href="https://github.com/AiratTop/secret.airat.top" target="_blank" rel="noreferrer">
             GitHub
           </a>
@@ -150,7 +154,6 @@
         <ul class="meta-list" id="resultMeta"></ul>
 
         <div class="actions">
-          <button class="repo-link" id="newButton" type="button">Create another</button>
           <button class="link-danger" id="burnButton" type="button">Destroy now</button>
           <p class="notice" id="resultNotice"></p>
         </div>
@@ -160,7 +163,7 @@
         <p>
           Open-source ·
           <a href="https://github.com/AiratTop/secret.airat.top" target="_blank" rel="noreferrer">GitHub</a> ·
-          <a href="https://airat.top" target="_blank" rel="noreferrer">airat.top</a>
+          <a href="https://airat.top" target="_blank" rel="noreferrer">Airat.Top</a>
         </p>
       </footer>
     </main>

@@ -136,6 +136,7 @@ function showResult() {
 
   els.composeCard.hidden = true;
   els.resultCard.hidden = false;
+  els.again.hidden = false;
   notice(els.createNotice, "");
 
   // The plaintext has no reason to stay in the DOM once the link exists.
@@ -199,8 +200,10 @@ els.again.addEventListener("click", () => {
   created = null;
   els.resultCard.hidden = true;
   els.composeCard.hidden = false;
+  els.again.hidden = true;
   els.burn.disabled = false;
   notice(els.resultNotice, "");
+  els.secret.focus();
 });
 
 els.secret.addEventListener("input", () => {

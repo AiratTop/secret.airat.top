@@ -110,6 +110,33 @@ describe("the scripts and the markup agree", () => {
   });
 });
 
+/**
+ * Two hand-written pages that are meant to look like one site. Nothing stops an edit to
+ * one from leaving the other behind, and the screenshots that catch it arrive late.
+ */
+describe("the two pages share their chrome", () => {
+  it("carry the same footer", async () => {
+    const footer = (html: string) => html.match(/<footer>([\s\S]*?)<\/footer>/)?.[1]?.replace(/\s+/g, " ").trim();
+
+    const landing = footer(await (await call("/")).text());
+    const view = footer(await (await call("/view.html")).text());
+
+    expect(landing).toBeDefined();
+    expect(view).toBe(landing);
+    expect(landing).toContain("Airat.Top");
+  });
+
+  it("both offer a way back to the form and out to the source", async () => {
+    for (const page of ["/", "/view.html"]) {
+      const html = await (await call(page)).text();
+      const actions = html.match(/<div class="brand-actions">([\s\S]*?)<\/div>/)?.[1];
+      expect(actions, `${page} has no header actions`).toBeDefined();
+      expect(actions).toContain("Create secret");
+      expect(actions).toContain("GitHub");
+    }
+  });
+});
+
 describe("crawler directives", () => {
   it("allows the landing page and disallows everything else", async () => {
     const robots = await (await call("/robots.txt")).text();
