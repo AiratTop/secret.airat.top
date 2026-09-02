@@ -60,16 +60,17 @@
         </div>
       </section>
 
-      <!-- After the reveal -->
+      <!-- After the reveal. Click-to-copy like the link on the create page, and for the
+           same reason: what you do with a revealed credential is take all of it. A div
+           with a button role rather than a real button, because a secret can run to
+           several lines and a <button> would stop you selecting part of one. -->
       <section class="card" id="secretCard" hidden>
-        <div class="field">
-          <label id="secretLabel">Secret</label>
-          <div class="secret-output" id="secretOutput"></div>
+        <p class="block-label" id="secretLabel">Secret</p>
+        <div class="link-copy" id="secretBlock" role="button" tabindex="0" aria-describedby="secretCopyState">
+          <span class="link-copy-url is-text" id="secretOutput"></span>
+          <span class="link-copy-cue" id="secretCopyState" aria-live="polite">Click to copy</span>
         </div>
-        <div class="actions">
-          <button class="repo-link" id="copyButton" type="button">Copy</button>
-          <p class="notice" id="secretNotice"></p>
-        </div>
+        <p class="notice" id="secretNotice"></p>
       </section>
 
       <!-- Gone, expired, or never existed — all one message, deliberately. -->

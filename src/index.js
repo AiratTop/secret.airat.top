@@ -97,6 +97,7 @@ export default {
           "Allow: /styles.css",
           "Allow: /app.js",
           "Allow: /crypto.js",
+          "Allow: /format.js",
           "Allow: /site.webmanifest",
           // Google fetches the favicon with a crawler, so `Disallow: /` would otherwise
           // cost the landing page its icon in search results.

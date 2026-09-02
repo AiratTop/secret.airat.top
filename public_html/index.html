@@ -80,21 +80,18 @@
 
       <!-- Compose -->
       <section class="card" id="composeCard">
+        <!-- One required field. Everything below it has a working default, so the form
+             reads as "paste and go" rather than as a settings page — the hints that used
+             to sit under each input said what the placeholder already said. -->
         <div class="field">
-          <label for="secretInput">Secret</label>
           <textarea
             id="secretInput"
+            aria-label="Secret"
             placeholder="Paste the password, token, or note you need to hand over."
             spellcheck="false"
             autocomplete="off"
           ></textarea>
-          <p class="hint" id="sizeHint">Encrypted locally before anything is sent.</p>
-        </div>
-
-        <div class="field">
-          <label for="labelInput">Label <span class="hint">(optional)</span></label>
-          <input id="labelInput" type="text" placeholder="staging DB password" autocomplete="off" />
-          <p class="hint">Shown to the recipient before they open the secret. Encrypted too.</p>
+          <p class="hint" id="sizeHint">Encrypted in this browser. The server only ever sees ciphertext.</p>
         </div>
 
         <div class="row">
@@ -108,11 +105,26 @@
           </div>
         </div>
 
-        <div class="field">
-          <label for="passphraseInput">Passphrase <span class="hint">(optional)</span></label>
-          <input id="passphraseInput" type="password" placeholder="Extra layer, shared over another channel" autocomplete="new-password" />
-          <p class="hint">Send it separately from the link — that is the whole point of having one.</p>
-        </div>
+        <!-- Folded away because most links need neither, and two empty optional inputs
+             above the button make a two-field form look like a six-field one. -->
+        <details class="extras">
+          <summary>Label and passphrase</summary>
+          <div class="field">
+            <label for="labelInput">Label</label>
+            <input id="labelInput" type="text" placeholder="staging DB password" autocomplete="off" />
+            <p class="hint">Shown before the secret is opened. Encrypted with it.</p>
+          </div>
+          <div class="field">
+            <label for="passphraseInput">Passphrase</label>
+            <input
+              id="passphraseInput"
+              type="password"
+              placeholder="Extra layer on top of the link"
+              autocomplete="new-password"
+            />
+            <p class="hint">Share it over a different channel than the link.</p>
+          </div>
+        </details>
 
         <div class="actions">
           <button class="primary" id="createButton" type="button">Create link</button>
@@ -122,21 +134,24 @@
 
       <!-- Result -->
       <section class="card" id="resultCard" hidden>
-        <div class="field">
-          <label for="resultLink">Your one-time link</label>
-          <div class="secret-link"><span id="resultLink"></span></div>
-          <p class="hint">
-            Copy it now. It is not stored anywhere else, and the part after <code>#</code> never
-            reached the server — we cannot show it to you again.
-          </p>
-        </div>
+        <!-- The link is the button. A separate "Copy" next to something that looks
+             selectable invites people to drag-select 90 characters of base64 and miss the
+             last one; making the whole block the target removes that failure entirely. -->
+        <button class="link-copy" id="resultLink" type="button" aria-describedby="copyState">
+          <span class="link-copy-url" id="resultLinkText"></span>
+          <span class="link-copy-cue" id="copyState" aria-live="polite">Click to copy</span>
+        </button>
+
+        <p class="hint">
+          Save it now — the part after <code>#</code> never reached the server, so this is
+          the only copy that exists.
+        </p>
 
         <ul class="meta-list" id="resultMeta"></ul>
 
         <div class="actions">
-          <button class="repo-link" id="copyButton" type="button">Copy link</button>
-          <button class="repo-link danger" id="burnButton" type="button">Destroy now</button>
           <button class="repo-link" id="newButton" type="button">Create another</button>
+          <button class="link-danger" id="burnButton" type="button">Destroy now</button>
           <p class="notice" id="resultNotice"></p>
         </div>
       </section>
