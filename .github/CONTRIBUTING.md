@@ -13,6 +13,7 @@ Thank you for your interest in improving secret.airat.top. Contributions of all 
 - Read the repository `README.md` for what the project does, and `AGENTS.md` for the decisions behind it.
 - Keep changes focused. If you have multiple unrelated ideas, open separate pull requests.
 - Add no external services, trackers, or third-party scripts. There are none today, and that is deliberate — see below.
+- Fonts come from Google Fonts in the source and are rewritten to this origin by Cloudflare Fonts in production. Self-hosting them has been considered and declined; please do not open a pull request for it.
 
 ## The One Rule
 

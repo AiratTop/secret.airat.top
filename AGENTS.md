@@ -77,13 +77,14 @@ airat.top zone has Cloudflare Fonts enabled, and Cloudflare rewrites them into
 `@font-face` rules served from `/cf-fonts/...` on this origin. Verified against the live
 site — the delivered HTML contains no fonts.googleapis.com reference at all.
 
-Worth knowing because it means a privacy property of this project rests on a zone-level
-toggle rather than on anything in this repository. If that setting is ever turned off, both
-pages start making requests to Google on load, including the page whose URL carries the
-decryption key. See Open Items.
+This means a privacy property of the project rests on a zone-level toggle rather than on
+anything in this repository. If that setting were turned off, both pages would start
+making requests to Google on load, including the page whose URL carries the decryption key.
 
-## Open Items
-- Decide whether to self-host the two fonts as `.woff2` files in `public_html`. Today
-  Cloudflare Fonts makes the site third-party-free in practice, but only while that zone
-  setting stays on; self-hosting would make it a property of the repository instead. The
-  cost is a few hundred kilobytes of binaries and a divergence from the sibling projects.
+**Self-hosting the fonts was considered and declined (2026-09-03).** Shipping `.woff2`
+files here would move the guarantee into the repository, at the cost of a few hundred
+kilobytes of binaries, a divergence from the sibling tools, and an ongoing thing to keep
+updated. Cloudflare Fonts already delivers the outcome, the toggle is owned by the same
+person who owns this project, and the risk of it being switched off unnoticed is not worth
+that maintenance. Do not reopen this without a new reason — a fresh contributor proposing
+self-hosted fonts should be pointed here.
