@@ -1,48 +1,49 @@
 /*
- * Shared with the other AiratTop tools in structure and token names; the accent is its
- * own so the two are not mistaken for each other in a tab strip.
+ * The AiratTop tool palette, token for token, as in pass.airat.top. `--danger` and
+ * `--success` are the only additions: this tool has states the generators do not — a
+ * secret destroyed, a passphrase refused — and they need a colour that is not the accent.
  */
 
 :root {
   color-scheme: light dark;
-  --bg: #f4f3fb;
-  --bg-strong: #eae8f6;
+  --bg: #f2f6fb;
+  --bg-strong: #e7eef8;
   --surface: #ffffff;
-  --surface-strong: #f2f0fb;
-  --text: #17142b;
-  --muted: #5a5570;
-  --accent: #6d4aff;
-  --accent-strong: #4b2fd0;
+  --surface-strong: #eff4fb;
+  --text: #101b2b;
+  --muted: #536074;
+  --accent: #2a6fd6;
+  --accent-strong: #1b4f9a;
   --danger: #c62f52;
   --success: #1f8a5b;
-  --border: #ddd9ee;
-  --shadow: 0 30px 70px rgba(23, 16, 51, 0.12);
-  --chip: #ece8fb;
-  --focus: rgba(109, 74, 255, 0.25);
-  --grid: rgba(20, 14, 45, 0.05);
-  --action-primary-bg: linear-gradient(135deg, #8467ff, #6d4aff);
-  --action-primary-text: #f7f5ff;
+  --border: #d7e1ef;
+  --shadow: 0 30px 70px rgba(9, 18, 33, 0.12);
+  --chip: #e7effb;
+  --focus: rgba(42, 111, 214, 0.25);
+  --grid: rgba(12, 18, 35, 0.05);
+  --action-primary-bg: linear-gradient(135deg, #3a86ff, #2a6fd6);
+  --action-primary-text: #f5f8ff;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #0d0b18;
-    --bg-strong: #131024;
-    --surface: #1a1730;
-    --surface-strong: #211d3c;
-    --text: #eae7f7;
-    --muted: #a49fbe;
-    --accent: #a68bff;
-    --accent-strong: #7d5cf0;
+    --bg: #0b111a;
+    --bg-strong: #0f1724;
+    --surface: #141e2c;
+    --surface-strong: #1a2536;
+    --text: #e6edf7;
+    --muted: #9fb0c7;
+    --accent: #61a8ff;
+    --accent-strong: #2f6bd1;
     --danger: #ff7a97;
     --success: #5fd6a0;
-    --border: #2d2850;
-    --shadow: 0 30px 80px rgba(0, 0, 0, 0.5);
-    --chip: #241f42;
-    --focus: rgba(166, 139, 255, 0.28);
+    --border: #233049;
+    --shadow: 0 30px 80px rgba(0, 0, 0, 0.45);
+    --chip: #1b263a;
+    --focus: rgba(97, 168, 255, 0.25);
     --grid: rgba(255, 255, 255, 0.05);
-    --action-primary-bg: linear-gradient(135deg, #b49bff, #7d5cf0);
-    --action-primary-text: #0c0918;
+    --action-primary-bg: linear-gradient(135deg, #6cb2ff, #3a7de0);
+    --action-primary-text: #071018;
   }
 }
 
@@ -54,8 +55,8 @@ body {
   font-family: "Space Grotesk", "Segoe UI", sans-serif;
   color: var(--text);
   background:
-    radial-gradient(900px 520px at 8% 6%, rgba(124, 92, 255, 0.25), transparent 60%),
-    radial-gradient(700px 520px at 92% 12%, rgba(74, 47, 208, 0.2), transparent 60%),
+    radial-gradient(900px 520px at 8% 6%, rgba(66, 149, 255, 0.25), transparent 60%),
+    radial-gradient(700px 520px at 92% 12%, rgba(28, 78, 160, 0.2), transparent 60%),
     linear-gradient(160deg, var(--bg), var(--bg-strong));
   display: flex;
   align-items: flex-start;
@@ -80,12 +81,19 @@ body::before {
   inset: -35% auto auto -10%;
   width: 560px;
   height: 560px;
-  background: radial-gradient(circle at center, rgba(109, 74, 255, 0.3), transparent 70%);
+  background: radial-gradient(circle at center, rgba(58, 134, 255, 0.3), transparent 70%);
   filter: blur(20px);
   opacity: 0.8;
   pointer-events: none;
   animation: drift 18s ease-in-out infinite;
   z-index: 0;
+}
+
+/* Slightly deeper blue in light mode, where the dark-mode glow washes out. */
+@media (prefers-color-scheme: light) {
+  .bg-glow {
+    background: radial-gradient(circle at center, rgba(42, 111, 214, 0.28), transparent 70%);
+  }
 }
 
 @keyframes drift {
