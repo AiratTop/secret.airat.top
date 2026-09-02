@@ -40,21 +40,17 @@
    * endpoint that can take the service down without any cleverness — fill the database,
    * spend the write allowance, and queue behind every real request.
    *
-   * Approximate by design: the binding counts per colo, so a distributed caller sees a
-   * higher effective ceiling. That is the right trade here — this is protection against
-   * flooding, not a quota, and the alternative is a Durable Object in front of every
-   * write, which is a second thing to keep up while the database is already the
-   * bottleneck.
+   * A Durable Object rather than Cloudflare's rate limit binding, which is the documented
+   * answer and was tried first: on this account it never refused anything, allowing fifty
+   * consecutive requests against a limit of one a minute. See src/rate-limiter.js.
    *
-   * Writing is far tighter than reading: creating is the expensive, persistent act, and
-   * ten links a minute is more than a person makes and far less than a script wants.
-   * Reads are looser because a recipient reloading a page must not be locked out of a
-   * secret that burns.
+   * One object per caller means the limit is exact rather than per data centre, which is
+   * what the binding trades away — and here the number being real is the point.
    */
-  "ratelimits": [
-    { "name": "WRITE_LIMIT", "namespace_id": "1001", "simple": { "limit": 10, "period": 60 } },
-    { "name": "READ_LIMIT", "namespace_id": "1002", "simple": { "limit": 60, "period": 60 } }
-  ],
+  "durable_objects": {
+    "bindings": [{ "name": "RATE_LIMITER", "class_name": "RateLimiter" }]
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["RateLimiter"] }],
 
   // Expiry is enforced on read as well, so a secret is never served past its deadline even
   // if this never fires. The cron is what stops expired rows accumulating in D1.
