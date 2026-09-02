@@ -66,10 +66,6 @@ pages start making requests to Google on load, including the page whose URL carr
 decryption key. See Open Items.
 
 ## Open Items
-- `facebook-domain-verification` in `public_html/index.html` is a placeholder copied from
-  `../pass.airat.top`. That token is per-domain (the other three verification tags are
-  account-wide and shared); it needs one issued for `secret.airat.top`.
-- `public_html/screenshot.png` is referenced by the Open Graph tags and does not exist yet.
 - Decide whether to self-host the two fonts as `.woff2` files in `public_html`. Today
   Cloudflare Fonts makes the site third-party-free in practice, but only while that zone
   setting stays on; self-hosting would make it a property of the repository instead. The

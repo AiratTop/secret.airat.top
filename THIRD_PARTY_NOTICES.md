@@ -11,8 +11,14 @@ runtime or during development, under their own licenses.
 - **JetBrains Mono** — SIL Open Font License 1.1.
   https://github.com/JetBrains/JetBrainsMono
 
-Both are referenced from Google Fonts (https://fonts.google.com) and are not redistributed
-from this repository.
+Both are referenced from Google Fonts (https://fonts.google.com) and no font file is
+stored in or redistributed from this repository.
+
+In production the `airat.top` zone has Cloudflare Fonts enabled, which rewrites those
+links into `@font-face` rules served from this origin — so the pages make no request to
+Google, and the font files reach visitors from `secret.airat.top` rather than from
+`fonts.gstatic.com`. Noted here because the delivered HTML says something different from
+the source.
 
 ## Development dependencies
 
