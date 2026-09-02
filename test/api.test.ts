@@ -1,23 +1,27 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { env, createExecutionContext, waitOnExecutionContext } from "cloudflare:test";
 import worker from "../src/index.js";
+import { BASE, call, readJson, post } from "./helpers.js";
 import { newId, randomToken } from "../src/ids.js";
 
-const BASE = "https://secret.airat.top";
 
-/** Drives the Worker the way the platform does, context and all. */
-async function call(path: string, init?: RequestInit) {
-  const ctx = createExecutionContext();
-  const response = await worker.fetch(new Request(`${BASE}${path}`, init), env, ctx);
-  await waitOnExecutionContext(ctx);
-  return response;
-}
-
+/**
+ * A create request. The verifier is required now, so the default carries one — a fixed
+ * string rather than a real hash, because the server only ever compares it and a test
+ * that derives one would be testing the browser's crypto instead of the API's contract.
+ */
 function createBody(overrides: Record<string, unknown> = {}) {
   return {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ ciphertext: "Y2lwaGVy", iv: "AAAAAAAAAAAAAAAA", ttl: 3600, maxViews: 1, ...overrides })
+    body: JSON.stringify({
+      ciphertext: "Y2lwaGVy",
+      iv: "AAAAAAAAAAAAAAAA",
+      verifier: "the-right-one",
+      ttl: 3600,
+      maxViews: 1,
+      ...overrides
+    })
   };
 }
 
@@ -71,10 +75,10 @@ describe("creating a secret", () => {
 
   it("never returns the burn token again", async () => {
     const created = await createSecret();
-    const meta = await (await call(`/api/secrets/${created.id}`)).json();
+    const meta = await readJson(await call(`/api/secrets/${created.id}`));
     expect(meta).not.toHaveProperty("burnToken");
 
-    const revealed = await (await call(`/api/secrets/${created.id}/reveal`, { method: "POST" })).json();
+    const revealed = await readJson(await post(`/api/secrets/${created.id}/reveal`, { verifier: "the-right-one" }));
     expect(revealed).not.toHaveProperty("burnToken");
   });
 
@@ -123,24 +127,24 @@ describe("reading metadata", () => {
     const created = await createSecret({ maxViews: 1 });
 
     for (let i = 0; i < 5; i++) {
-      const meta = await (await call(`/api/secrets/${created.id}`)).json();
+      const meta = await readJson(await call(`/api/secrets/${created.id}`));
       expect(meta.viewsLeft).toBe(1);
     }
 
-    const revealed = await call(`/api/secrets/${created.id}/reveal`, { method: "POST" });
+    const revealed = await post(`/api/secrets/${created.id}/reveal`, { verifier: "the-right-one" });
     expect(revealed.status).toBe(200);
   });
 
   it("says whether a passphrase is needed, and hands over the salt to derive with", async () => {
     const created = await createSecret({ kdfSalt: "c2FsdHNhbHRzYWx0c2E" });
-    const meta = await (await call(`/api/secrets/${created.id}`)).json();
+    const meta = await readJson(await call(`/api/secrets/${created.id}`));
     expect(meta.hasPassword).toBe(true);
     expect(meta.kdfSalt).toBe("c2FsdHNhbHRzYWx0c2E");
   });
 
   it("never returns the ciphertext", async () => {
     const created = await createSecret();
-    const meta = await (await call(`/api/secrets/${created.id}`)).json();
+    const meta = await readJson(await call(`/api/secrets/${created.id}`));
     expect(meta).not.toHaveProperty("ciphertext");
   });
 });
@@ -148,7 +152,7 @@ describe("reading metadata", () => {
 describe("revealing", () => {
   it("returns the ciphertext and destroys a one-view secret", async () => {
     const created = await createSecret({ maxViews: 1 });
-    const revealed = await (await call(`/api/secrets/${created.id}/reveal`, { method: "POST" })).json();
+    const revealed = await readJson(await post(`/api/secrets/${created.id}/reveal`, { verifier: "the-right-one" }));
 
     expect(revealed.ciphertext).toBe("Y2lwaGVy");
     expect(revealed.burned).toBe(true);
@@ -162,12 +166,12 @@ describe("revealing", () => {
     const created = await createSecret({ maxViews: 3 });
 
     for (const expected of [2, 1, 0]) {
-      const revealed = await (await call(`/api/secrets/${created.id}/reveal`, { method: "POST" })).json();
+      const revealed = await readJson(await post(`/api/secrets/${created.id}/reveal`, { verifier: "the-right-one" }));
       expect(revealed.viewsLeft).toBe(expected);
       expect(revealed.burned).toBe(expected === 0);
     }
 
-    expect((await call(`/api/secrets/${created.id}/reveal`, { method: "POST" })).status).toBe(404);
+    expect((await post(`/api/secrets/${created.id}/reveal`, { verifier: "the-right-one" })).status).toBe(404);
   });
 
   /**
@@ -179,7 +183,7 @@ describe("revealing", () => {
     const created = await createSecret({ maxViews: 1 });
 
     const responses = await Promise.all(
-      Array.from({ length: 8 }, () => call(`/api/secrets/${created.id}/reveal`, { method: "POST" }))
+      Array.from({ length: 8 }, () => post(`/api/secrets/${created.id}/reveal`, { verifier: "the-right-one" }))
     );
 
     const winners = responses.filter((r) => r.status === 200);
@@ -190,7 +194,7 @@ describe("revealing", () => {
   it("hands out a 2-view secret to exactly two of five simultaneous readers", async () => {
     const created = await createSecret({ maxViews: 2 });
     const responses = await Promise.all(
-      Array.from({ length: 5 }, () => call(`/api/secrets/${created.id}/reveal`, { method: "POST" }))
+      Array.from({ length: 5 }, () => post(`/api/secrets/${created.id}/reveal`, { verifier: "the-right-one" }))
     );
     expect(responses.filter((r) => r.status === 200)).toHaveLength(2);
   });
@@ -201,8 +205,9 @@ describe("revealing", () => {
    * which point the only view was gone.
    */
   it("does not spend a view on an attempt that cannot decrypt", async () => {
-    const created = await createSecret({ kdfSalt: "c2FsdA", verifier: "the-right-one", maxViews: 1 });
+    const created = await createSecret({ kdfSalt: "c2FsdA", maxViews: 1 });
 
+    // No verifier at all — the empty-passphrase click, as reported.
     const noVerifier = await call(`/api/secrets/${created.id}/reveal`, { method: "POST" });
     expect(noVerifier.status).toBe(403);
 
@@ -214,7 +219,7 @@ describe("revealing", () => {
     expect(wrongVerifier.status).toBe(403);
 
     // Untouched: still there, still one view, and it still opens.
-    const meta = await (await call(`/api/secrets/${created.id}`)).json();
+    const meta = await readJson(await call(`/api/secrets/${created.id}`));
     expect(meta.viewsLeft).toBe(1);
 
     const right = await call(`/api/secrets/${created.id}/reveal`, {
@@ -223,7 +228,7 @@ describe("revealing", () => {
       body: JSON.stringify({ verifier: "the-right-one" })
     });
     expect(right.status).toBe(200);
-    expect((await right.json()).burned).toBe(true);
+    expect((await readJson(right)).burned).toBe(true);
   });
 
   it("survives a run of wrong attempts and still opens once", async () => {
@@ -250,7 +255,7 @@ describe("revealing", () => {
       body: JSON.stringify({ verifier: "wrong" })
     });
     expect(response.status).toBe(403);
-    expect((await response.json()).code).toBe("verifier");
+    expect((await readJson(response)).code).toBe("verifier");
   });
 
   /**
@@ -344,7 +349,7 @@ describe("destroying early", () => {
 describe("not leaking which ids exist", () => {
   it("answers identically for a consumed secret, an expired one and one never issued", async () => {
     const consumed = await createSecret();
-    await call(`/api/secrets/${consumed.id}/reveal`, { method: "POST" });
+    await post(`/api/secrets/${consumed.id}/reveal`, { verifier: "the-right-one" });
     const expired = await insertRaw({ expires_at: Date.now() - 1 });
     const neverIssued = newId();
 
