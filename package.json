@@ -13,13 +13,21 @@
     "db:create": "wrangler d1 create secret-airat",
     "db:migrate": "wrangler d1 migrations apply DB --remote",
     "db:migrate:local": "wrangler d1 migrations apply DB --local",
-    "tail": "wrangler tail"
+    "tail": "wrangler tail",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "devDependencies": {
+    "@cloudflare/vitest-pool-workers": "^0.22.0",
+    "@cloudflare/workers-types": "^5.20260902.1",
+    "typescript": "^7.0.2",
+    "vitest": "^4.1.11",
     "wrangler": "^4.124.0"
   },
   "allowScripts": {
     "esbuild@0.28.1": true,
-    "workerd@1.20260831.1": true
+    "workerd@1.20260831.1": true,
+    "fsevents@2.3.3": true,
+    "workerd@1.20260815.1": true
   }
 }

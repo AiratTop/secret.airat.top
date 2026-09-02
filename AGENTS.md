@@ -22,6 +22,8 @@ browser, shared as a link, and destroyed after it is read or when its timer runs
 - Identifiers: `src/ids.js` — UUIDv7 as 26-char Crockford base32.
 - Schema: `migrations/`, applied with `wrangler d1 migrations apply DB`.
 - Static UI: `public_html/` (`index.html` create, `view.html` reveal, `crypto.js` shared).
+- Tests: `test/`, run with `npm test` — vitest in `workerd` against a real local D1, with
+  the real `migrations/` applied. CI runs them before it touches Cloudflare.
 
 ## The Invariant
 The server never sees plaintext, the encryption key, or a passphrase. The key is generated
@@ -33,7 +35,9 @@ convenient it looks.
 - Revealing a secret is `POST /api/secrets/{id}/reveal` and nothing else. `GET /{id}` and
   `GET /api/secrets/{id}` must stay side-effect free so link previewers cannot burn a secret.
 - `consumeSecret` increments the view counter inside the same UPDATE that reads the row.
-  Splitting that into a read and a write reintroduces the double-read race.
+  Splitting that into a read and a write reintroduces the double-read race; the two
+  concurrency tests in `test/api.test.ts` fail when it is, which was verified by breaking
+  it on purpose rather than assumed.
 - "Does not exist", "expired" and "already read" are one 404 with one message on purpose;
   telling them apart makes the endpoint an oracle for which ids were ever issued.
 - Only `/` is indexable. Every other response carries `X-Robots-Tag: noindex` and is

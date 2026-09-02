@@ -35,6 +35,11 @@ jobs:
 
       - run: npm ci
 
+      # Before anything is touched in Cloudflare. The suite runs in workerd against a
+      # local D1, so a failure here is a real failure rather than a mock disagreeing.
+      - name: test
+        run: npm test
+
       # Migrations are additive by convention, so this is safe to run before the code that
       # uses them is live. The reverse order is not.
       - name: apply D1 migrations

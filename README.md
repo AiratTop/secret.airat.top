@@ -50,6 +50,17 @@ npm run db:migrate:local
 npm run dev
 ```
 
+Running the tests:
+
+```sh
+npm test
+```
+
+They run in `workerd` against a real local D1 with the real migrations applied, because
+the invariant most worth checking — a burn-after-reading link burns exactly once when two
+readers arrive together — is a property of how D1 serialises a statement, and a mock would
+prove nothing about it.
+
 Deploying to production:
 
 ```sh
