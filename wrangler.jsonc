@@ -41,11 +41,15 @@
    * spend the write allowance, and queue behind every real request.
    *
    * A Durable Object rather than Cloudflare's rate limit binding, which is the documented
-   * answer and was tried first: on this account it never refused anything, allowing fifty
-   * consecutive requests against a limit of one a minute. See src/rate-limiter.js.
+   * answer and does work — but not closely enough for this. Measured on the deployed
+   * Worker with the binding set to 3 requests a minute: 23 of 39 consecutive calls under
+   * one key were allowed before it began refusing. The docs call it "permissive,
+   * eventually consistent, and intentionally designed to not be used as an accurate
+   * accounting system"; a burst arrives before the count propagates, and a burst is
+   * exactly the shape of the thing this guards against. See src/rate-limiter.js.
    *
-   * One object per caller means the limit is exact rather than per data centre, which is
-   * what the binding trades away — and here the number being real is the point.
+   * One object per caller means the limit is exact rather than per data centre, and ten
+   * writes a minute means ten.
    */
   "durable_objects": {
     "bindings": [{ "name": "RATE_LIMITER", "class_name": "RateLimiter" }]

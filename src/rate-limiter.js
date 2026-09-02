@@ -2,11 +2,13 @@
  * Per-caller flood protection, counted somewhere that actually counts.
  *
  * This started as Cloudflare's rate limit binding, which is the documented answer and is
- * three lines. On this account it is a no-op: with the limit set to one request a minute,
- * fifty consecutive requests were all allowed and `limit()` returned `{success:true}`
- * every time, with the binding present and correct in the deployed version. A limiter
- * everyone believes in and that does not run is worse than none, so the counting moved
- * here, where it can be tested.
+ * three lines. It enforces, but loosely: measured against the deployed Worker with the
+ * binding set to 3 requests a minute, 23 of 39 consecutive calls under one key were
+ * allowed before it began refusing. That is the documented behaviour rather than a fault
+ * — "permissive, eventually consistent, and intentionally designed to not be used as an
+ * accurate accounting system" — and it is the wrong shape here, because a burst is
+ * precisely what fills a database, and the burst is what slips through before the count
+ * propagates.
  *
  * One object per key, addressed by `idFromName`, so "ten writes a minute" means ten —
  * not ten per data centre, which is the accuracy the binding trades away.

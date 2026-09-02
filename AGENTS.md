@@ -71,9 +71,11 @@ convenient it looks.
 - Rate limiting lives in `enforceRateLimit` and counts in a Durable Object
   (`src/rate-limiter.js`), one per caller, with separate keys for writes and reads so a
   flood of creates cannot lock a recipient out of a secret about to expire. **Not**
-  Cloudflare's rate limit binding: it was tried first and never refused anything on this
-  account — fifty consecutive requests against a limit of one a minute were all allowed —
-  so if someone proposes switching back, verify it enforces before believing it. Every
+  Cloudflare's rate limit binding: it does enforce, but permissively by design — measured
+  on the deployed Worker at a limit of 3/minute, 23 of 39 consecutive calls under one key
+  were allowed before it started refusing, because the count propagates after the burst
+  that a flood consists of. Cheaper than a Durable Object and the right choice where an
+  approximate ceiling suffices; here the number needs to be real. Every
   `/api/` path goes through the limiter, `/api/config` included; it used to be answered
   ahead of the check and was therefore free to hammer. Tests give every request its own
   address so the limiter does not make the suite order-dependent.
