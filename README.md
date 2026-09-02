@@ -1,5 +1,7 @@
 # secret.airat.top
 
+[![secret.airat.top](https://raw.githubusercontent.com/AiratTop/secret.airat.top/main/public_html/screenshot.png)](https://secret.airat.top/)
+
 Share secrets with self-destructing links.
 
 A password, a token, or a note is encrypted in your browser, stored as ciphertext, and
