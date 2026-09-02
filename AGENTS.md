@@ -17,13 +17,30 @@ browser, shared as a link, and destroyed after it is read or when its timer runs
 - Closest sibling project for design language: `../pass.airat.top`.
 
 ## Structure
-- Worker entry: `src/index.js` (routing, `/{id}` page, robots/sitemap, cron sweep).
-- API handlers: `src/api.js`. D1 statements: `src/db.js`. Shared limits: `src/limits.js`.
+- Worker entry: `src/index.js` — routing, the `/{id}` page, robots/sitemap, cron sweep.
+- `src/api.js` JSON handlers and input validation; `src/db.js` every D1 statement;
+  `src/http.js` response helpers that put `noindex` and `no-store` on by default;
+  `src/limits.js` the numbers both the client and the server validate against.
 - Identifiers: `src/ids.js` — UUIDv7 as 26-char Crockford base32.
 - Schema: `migrations/`, applied with `wrangler d1 migrations apply DB`.
-- Static UI: `public_html/` (`index.html` create, `view.html` reveal, `crypto.js` shared).
+- Static UI: `public_html/` — `index.html` + `app.js` create, `view.html` + `view.js`
+  reveal, `crypto.js` the encryption both share, `format.js` the date format both share.
 - Tests: `test/`, run with `npm test` — vitest in `workerd` against a real local D1, with
   the real `migrations/` applied. CI runs them before it touches Cloudflare.
+- Community docs: `README.md`, `SECURITY.md`, `.github/CONTRIBUTING.md`,
+  `.github/CODE_OF_CONDUCT.md`, `THIRD_PARTY_NOTICES.md`.
+
+## API Summary
+- Live endpoint: `https://secret.airat.top`.
+- Status page: `https://status.airat.top`.
+- `POST /api/secrets` store ciphertext; `GET /api/secrets/{id}` metadata, side-effect free;
+  `POST /api/secrets/{id}/reveal` consume a view; `DELETE /api/secrets/{id}` needs the burn
+  token; `GET /api/config` limits; `GET /health` liveness including a D1 round trip.
+- No key, no account, no rate limit. Every response is JSON, `no-store` and `noindex`.
+- The API cannot produce a usable link on its own: the caller encrypts, and the key goes
+  in the fragment client-side. `public_html/crypto.js` is the reference implementation.
+- Documented with worked examples in `README.md`; the request and response bodies there
+  were captured from a real run, so keep them that way rather than writing them by hand.
 
 ## The Invariant
 The server never sees plaintext, the encryption key, or a passphrase. The key is generated

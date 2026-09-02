@@ -32,6 +32,16 @@ so a link that leaks is not enough on its own.
 
 ## API
 
+Base URL: `https://secret.airat.top`. No key, no account, no rate limit. Every response is
+JSON, `no-store`, and `noindex`.
+
+One thing to understand before reading further: **the API cannot create a usable link on
+its own.** The server never receives a key, so a client must encrypt the secret itself and
+append the key to the URL as a fragment. `POST /api/secrets` stores an opaque blob and has
+no idea whether it is AES-GCM or noise. The reference implementation is
+[`public_html/crypto.js`](public_html/crypto.js), which is 100 lines and has no
+dependencies.
+
 | Method | Path | Effect |
 | --- | --- | --- |
 | `POST` | `/api/secrets` | Store ciphertext, get an id, URL and burn token |
@@ -41,8 +51,193 @@ so a link that leaks is not enough on its own.
 | `GET` | `/api/config` | Limits the UI validates against |
 | `GET` | `/health` | Liveness, including a D1 round trip |
 
-Revealing is a `POST` so that link previewers, mail scanners and chat clients that unfurl
-URLs cannot burn a secret before its recipient sees it.
+### `POST /api/secrets`
+
+| Field | Required | Notes |
+| --- | --- | --- |
+| `ciphertext` | yes | base64url, at most 65536 characters |
+| `iv` | yes | base64url AES-GCM nonce |
+| `kdfSalt` | no | base64url; present means a passphrase is required to decrypt |
+| `label` | no | `iv~ciphertext`, both base64url — encrypted like everything else |
+| `ttl` | no | seconds, 60 to 2592000 (30 days). Default 86400 |
+| `maxViews` | no | 1 to 10. Default 1, which is burn-after-reading |
+
+```bash
+curl -X POST 'https://secret.airat.top/api/secrets' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "ciphertext": "mgN2vg9tjOmaRaaWVdshdklM0g8wRVA",
+    "iv": "hMePPtwiYPR7hBdE",
+    "ttl": 3600,
+    "maxViews": 1
+  }'
+```
+
+```json
+{
+  "id": "06G6822EJ5S7XCMAQKKQY1WC68",
+  "url": "https://secret.airat.top/06G6822EJ5S7XCMAQKKQY1WC68",
+  "burnToken": "6YZXI4ezPe0Ns64cDE3mYFapumrEmKCw",
+  "expiresAt": 1788388261137,
+  "maxViews": 1
+}
+```
+
+The link to send is `url` with your key appended after a `#`. The `burnToken` is returned
+here and never again — it is the creator's only proof, and a second way to fetch it would
+make it derivable from the id.
+
+### `GET /api/secrets/{id}`
+
+What the landing page may know before anyone commits to opening the secret. **It does not
+consume a view**, so a link previewer or a mail scanner following the URL cannot destroy a
+secret before its recipient clicks.
+
+```bash
+curl 'https://secret.airat.top/api/secrets/06G6822EJ5S7XCMAQKKQY1WC68'
+```
+
+```json
+{
+  "id": "06G6822EJ5S7XCMAQKKQY1WC68",
+  "hasPassword": false,
+  "kdfSalt": null,
+  "label": null,
+  "maxViews": 1,
+  "viewsLeft": 1,
+  "sizeBytes": 31,
+  "createdAt": 1788384661137,
+  "expiresAt": 1788388261137
+}
+```
+
+### `POST /api/secrets/{id}/reveal`
+
+The only call with a side effect: it consumes one view, and deletes the secret when the
+last one is used. `GET` here returns `405` rather than the ciphertext, deliberately.
+
+```bash
+curl -X POST 'https://secret.airat.top/api/secrets/06G6822EJ5S7XCMAQKKQY1WC68/reveal'
+```
+
+```json
+{
+  "id": "06G6822EJ5S7XCMAQKKQY1WC68",
+  "ciphertext": "mgN2vg9tjOmaRaaWVdshdklM0g8wRVA",
+  "iv": "hMePPtwiYPR7hBdE",
+  "kdfSalt": null,
+  "label": null,
+  "viewsLeft": 0,
+  "burned": true,
+  "expiresAt": 1788388261137
+}
+```
+
+Asking again returns `404`. So does the metadata endpoint — and so does an id that was
+never issued, or one that expired, with the same body in every case:
+
+```json
+{
+  "error": "This secret does not exist, has expired, or has already been destroyed.",
+  "code": "gone"
+}
+```
+
+That sameness is deliberate. Telling the three apart would turn the endpoint into an
+oracle for which identifiers were ever issued.
+
+### `DELETE /api/secrets/{id}`
+
+Destroys a secret before anyone reads it. Needs the burn token from creation; without it,
+or with the wrong one, the answer is the same `404` as above.
+
+```bash
+curl -X DELETE 'https://secret.airat.top/api/secrets/06G6822EJ5S7XCMAQKKQY1WC68' \
+  -H 'Content-Type: application/json' \
+  -d '{"burnToken": "6YZXI4ezPe0Ns64cDE3mYFapumrEmKCw"}'
+```
+
+```json
+{ "destroyed": true }
+```
+
+### `GET /api/config`
+
+The limits the web UI validates against, so a client cannot offer what the server would
+reject.
+
+```bash
+curl 'https://secret.airat.top/api/config'
+```
+
+```json
+{
+  "ttlOptions": [
+    { "value": 86400, "label": "24 hours" },
+    { "value": 3600, "label": "1 hour" },
+    { "value": 300, "label": "5 minutes" },
+    { "value": 604800, "label": "7 days" },
+    { "value": 2592000, "label": "30 days" }
+  ],
+  "defaultTtl": 86400,
+  "defaultMaxViews": 1,
+  "maxViews": 10,
+  "maxCiphertextBytes": 65536
+}
+```
+
+### `GET /health`
+
+```bash
+curl 'https://secret.airat.top/health'
+```
+
+```json
+{ "status": "ok", "database": "ok" }
+```
+
+Returns `503` with `"database": "unavailable"` when D1 cannot be reached, so a status
+checker sees it as down. Status page: https://status.airat.top
+
+### End to end from a script
+
+Encryption is the caller's job, so a shell example needs a language with a crypto library.
+This is the whole flow in Node, using this repository's own module:
+
+```js
+import { encryptText, decryptText } from "./public_html/crypto.js";
+
+const BASE = "https://secret.airat.top";
+
+// 1. Encrypt locally. `linkKey` must never be sent anywhere.
+const enc = await encryptText("hunter2", null);
+
+// 2. Store the ciphertext.
+const created = await (
+  await fetch(`${BASE}/api/secrets`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ ciphertext: enc.ciphertext, iv: enc.iv, ttl: 3600, maxViews: 1 })
+  })
+).json();
+
+// 3. The link, assembled on this side. The fragment never leaves the client.
+console.log(`${created.url}#${enc.linkKey}`);
+
+// 4. The recipient consumes the view and decrypts.
+const revealed = await (await fetch(`${BASE}/api/secrets/${created.id}/reveal`, { method: "POST" })).json();
+console.log(await decryptText(revealed.ciphertext, revealed.iv, enc.linkKey, null, revealed.kdfSalt));
+// -> hunter2
+```
+
+### Errors
+
+| Status | Meaning |
+| --- | --- |
+| `400` | The body is malformed, or a field is outside its limits |
+| `404` | Gone, expired, never issued, wrong burn token, or a malformed id |
+| `405` | Wrong method — notably `GET` on `/reveal`, which has a side effect |
+| `503` | `/health` only: D1 unreachable |
 
 ## Development
 
