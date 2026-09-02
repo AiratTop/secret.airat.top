@@ -1,0 +1,45 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "secret-airat",
+  "main": "src/index.js",
+  "compatibility_date": "2026-08-20",
+  "workers_dev": false,
+  "observability": { "enabled": true },
+
+  "vars": {
+    "SITE_HOST": "secret.airat.top"
+  },
+
+  // The static UI lives in `public_html`, but the Worker has to see the request first:
+  // `/{id}` is an id-shaped path, not a file, and the asset server would answer 404 for it
+  // before any route matched. `run_worker_first` inverts that, and the Worker falls through
+  // to `env.ASSETS` for everything it does not itself claim.
+  // `html_handling: "none"` turns off the asset server's .html rewriting. By default
+  // `/view.html` answers with a 307 to `/view`, which is a redirect in the middle of
+  // serving a secret's page for no benefit here — the Worker decides which file every
+  // path maps to, and it should get the file it asked for.
+  "assets": {
+    "directory": "./public_html",
+    "binding": "ASSETS",
+    "run_worker_first": true,
+    "html_handling": "none"
+  },
+
+  // database_id is filled in after `wrangler d1 create secret-airat`.
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "secret-airat",
+      "database_id": "TODO_RUN_WRANGLER_D1_CREATE",
+      "migrations_dir": "migrations"
+    }
+  ],
+
+  // Expiry is enforced on read as well, so a secret is never served past its deadline even
+  // if this never fires. The cron is what stops expired rows accumulating in D1.
+  "triggers": {
+    "crons": ["*/15 * * * *"]
+  },
+
+  "routes": [{ "pattern": "secret.airat.top", "custom_domain": true }]
+}

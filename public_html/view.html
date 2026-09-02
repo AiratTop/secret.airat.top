@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>A secret is waiting | secret.airat.top</title>
+    <meta name="description" content="Someone shared a secret with you through a self-destructing link." />
+    <!-- Every page but the landing page is kept out of search results. The Worker sends
+         X-Robots-Tag on this response as well, so an indexer that ignores the tag below
+         still gets told. -->
+    <meta name="robots" content="noindex, nofollow, noarchive" />
+    <meta name="referrer" content="no-referrer" />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="manifest" href="/site.webmanifest" />
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <div class="bg-glow" aria-hidden="true"></div>
+
+    <main class="shell">
+      <header class="brand">
+        <div class="brand-copy">
+          <p class="brand-eyebrow">secret.airat.top</p>
+          <h1 id="headline">A secret is waiting for you</h1>
+          <p class="brand-subtitle" id="subtitle">Checking whether it is still there…</p>
+        </div>
+      </header>
+
+      <!-- Before the reveal. Opening is a deliberate click, never a page load: a link
+           previewer or a mail scanner fetching this URL must not consume the secret. -->
+      <section class="card" id="gateCard" hidden>
+        <ul class="meta-list" id="gateMeta"></ul>
+
+        <div class="field" id="passphraseField" hidden>
+          <label for="passphraseInput">Passphrase</label>
+          <input id="passphraseInput" type="password" placeholder="The sender shared it separately" autocomplete="off" />
+          <p class="hint">This secret needs a passphrase in addition to the link.</p>
+        </div>
+
+        <div class="actions">
+          <button class="primary" id="revealButton" type="button">Reveal the secret</button>
+          <p class="notice" id="gateNotice"></p>
+        </div>
+      </section>
+
+      <!-- After the reveal -->
+      <section class="card" id="secretCard" hidden>
+        <div class="field">
+          <label id="secretLabel">Secret</label>
+          <div class="secret-output" id="secretOutput"></div>
+        </div>
+        <div class="actions">
+          <button class="repo-link" id="copyButton" type="button">Copy</button>
+          <p class="notice" id="secretNotice"></p>
+        </div>
+      </section>
+
+      <!-- Gone, expired, or never existed — all one message, deliberately. -->
+      <section class="card" id="goneCard" hidden>
+        <p class="notice error" id="goneMessage">
+          This secret does not exist, has expired, or has already been destroyed.
+        </p>
+        <div class="actions">
+          <a class="repo-link" href="/">Create your own</a>
+        </div>
+      </section>
+
+      <footer>
+        <p>
+          Encrypted in the browser ·
+          <a href="https://github.com/AiratTop/secret.airat.top" target="_blank" rel="noreferrer">Open-source</a>
+        </p>
+      </footer>
+    </main>
+
+    <script type="module" src="/view.js"></script>
+  </body>
+</html>
