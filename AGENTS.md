@@ -65,6 +65,18 @@ convenient it looks.
   telling them apart makes the endpoint an oracle for which ids were ever issued.
 - Only `/` is indexable. Every other response carries `X-Robots-Tag: noindex` and is
   disallowed in `robots.txt`.
+- `verifier` is required on create. The column is nullable only for rows written before
+  it existed; accepting a create without one would quietly reintroduce the bug where a
+  failed attempt burns a view.
+- Rate limiting lives in `enforceRateLimit` and is per address, with separate namespaces
+  for writes and reads so a flood of creates cannot lock a recipient out of a secret about
+  to expire. The bindings are absent in the local dev server; tests give every request its
+  own address so the limiter does not make the suite order-dependent.
+- Request bodies are capped in `readJson` before parsing, by declared length and again
+  while reading, because `request.json()` buffers everything first.
+- `npm run typecheck` regenerates `worker-configuration.d.ts` with `wrangler types` and
+  then runs `tsc`. That file is generated from `wrangler.jsonc` and is not committed, so
+  the binding types cannot drift from the bindings that deploy.
 - Keep UI style consistent with the other AiratTop tools.
 
 ## Analytics and Third-Party Scripts

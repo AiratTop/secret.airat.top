@@ -1,16 +1,7 @@
 import { describe, it, expect } from "vitest";
-import { env, createExecutionContext, waitOnExecutionContext } from "cloudflare:test";
-import worker from "../src/index.js";
+import { BASE, call, readJson, post } from "./helpers.js";
 import { newId } from "../src/ids.js";
 
-const BASE = "https://secret.airat.top";
-
-async function call(path: string, init?: RequestInit) {
-  const ctx = createExecutionContext();
-  const response = await worker.fetch(new Request(`${BASE}${path}`, init), env, ctx);
-  await waitOnExecutionContext(ctx);
-  return response;
-}
 
 describe("the secret page", () => {
   /**
@@ -19,11 +10,17 @@ describe("the secret page", () => {
    * the difference between two responses is itself a signal.
    */
   it("serves one static shell for any well-formed id, live or not", async () => {
-    const live = await (await call("/api/secrets", {
+    const live = await readJson(await call("/api/secrets", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ciphertext: "Y2lwaGVy", iv: "AAAAAAAAAAAAAAAA", ttl: 3600, maxViews: 1 })
-    })).json();
+      body: JSON.stringify({
+        ciphertext: "Y2lwaGVy",
+        iv: "AAAAAAAAAAAAAAAA",
+        verifier: "the-right-one",
+        ttl: 3600,
+        maxViews: 1
+      })
+    }));
 
     const forLive = await call(`/${live.id}`);
     const forUnknown = await call(`/${newId()}`);

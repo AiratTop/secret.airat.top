@@ -25,3 +25,13 @@ export const MIN_TTL = 60;
 /** How many times a link may be opened. One is burn-after-reading. */
 export const MAX_VIEWS_LIMIT = 10;
 export const DEFAULT_MAX_VIEWS = 1;
+
+/**
+ * How many rows one sweep may remove, and how many sweeps it may run.
+ *
+ * A single DELETE of everything expired is the thing that stalls a D1 after an outage or
+ * a flood, so the work is bounded; running a handful of bounded batches means an hour of
+ * accumulated junk is gone in one cron rather than in six.
+ */
+export const SWEEP_BATCH = 1000;
+export const SWEEP_MAX_BATCHES = 10;

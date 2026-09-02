@@ -37,8 +37,11 @@ destroying a burn-after-reading secret on the first mistyped attempt.
 
 ## API
 
-Base URL: `https://secret.airat.top`. No key, no account, no rate limit. Every response is
-JSON, `no-store`, and `noindex`.
+Base URL: `https://secret.airat.top`. No key and no account. Every response is JSON,
+`no-store`, and `noindex`.
+
+Rate limited per caller: 10 writes and 60 reads a minute, answered with `429` and a
+`Retry-After`. Request bodies are capped at 128 KB and must be `application/json`.
 
 One thing to understand before reading further: **the API cannot create a usable link on
 its own.** The server never receives a key, so a client must encrypt the secret itself and
@@ -63,7 +66,7 @@ dependencies.
 | `ciphertext` | yes | base64url, at most 65536 characters |
 | `iv` | yes | base64url AES-GCM nonce |
 | `kdfSalt` | no | base64url; present means a passphrase is required to decrypt |
-| `verifier` | no | base64url; lets the server refuse a wrong key without spending a view |
+| `verifier` | **yes** | base64url; lets the server refuse a wrong key without spending a view |
 | `label` | no | `iv~ciphertext`, both base64url — encrypted like everything else |
 | `ttl` | no | seconds, 60 to 2592000 (30 days). Default 86400 |
 | `maxViews` | no | 1 to 10. Default 1, which is burn-after-reading |
@@ -74,6 +77,7 @@ curl -X POST 'https://secret.airat.top/api/secrets' \
   -d '{
     "ciphertext": "mgN2vg9tjOmaRaaWVdshdklM0g8wRVA",
     "iv": "hMePPtwiYPR7hBdE",
+    "verifier": "0Rk8yTn2wq7pQF3mJ1sX9dLbVhC5aZuEoNr4tGiKyPs",
     "ttl": 3600,
     "maxViews": 1
   }'
@@ -229,7 +233,13 @@ const created = await (
   await fetch(`${BASE}/api/secrets`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ ciphertext: enc.ciphertext, iv: enc.iv, ttl: 3600, maxViews: 1 })
+    body: JSON.stringify({
+      ciphertext: enc.ciphertext,
+      iv: enc.iv,
+      verifier: enc.verifier,
+      ttl: 3600,
+      maxViews: 1
+    })
   })
 ).json();
 
@@ -237,7 +247,13 @@ const created = await (
 console.log(`${created.url}#${enc.linkKey}`);
 
 // 4. The recipient consumes the view and decrypts.
-const revealed = await (await fetch(`${BASE}/api/secrets/${created.id}/reveal`, { method: "POST" })).json();
+const revealed = await (
+  await fetch(`${BASE}/api/secrets/${created.id}/reveal`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ verifier: enc.verifier })
+  })
+).json();
 console.log(await decryptText(revealed.ciphertext, revealed.iv, enc.linkKey, null, revealed.kdfSalt));
 // -> hunter2
 ```
@@ -248,6 +264,9 @@ console.log(await decryptText(revealed.ciphertext, revealed.iv, enc.linkKey, nul
 | --- | --- |
 | `400` | The body is malformed, or a field is outside its limits |
 | `403` | `/reveal` only: the verifier does not match. No view was spent — retry |
+| `413` | Request body over 128 KB |
+| `415` | Content-Type is not `application/json` |
+| `429` | Rate limited. `Retry-After` says when to come back |
 | `404` | Gone, expired, never issued, wrong burn token, or a malformed id |
 | `405` | Wrong method — notably `GET` on `/reveal`, which has a side effect |
 | `503` | `/health` only: D1 unreachable |
@@ -261,10 +280,11 @@ npm run db:migrate:local
 npm run dev
 ```
 
-Running the tests:
+Running the tests and the type check:
 
 ```sh
 npm test
+npm run typecheck
 ```
 
 They run in `workerd` against a real local D1 with the real migrations applied, because

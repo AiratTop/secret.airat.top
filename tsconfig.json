@@ -4,12 +4,22 @@
     "module": "es2022",
     "moduleResolution": "bundler",
     "lib": ["es2022"],
-    "types": ["@cloudflare/workers-types/2023-07-01", "@cloudflare/vitest-pool-workers"],
+    // The dated entry points this package used to ship are gone; the root export is the
+    // current runtime's types. Naming a version that does not exist made `tsc` fail on
+    // the first line and typecheck nothing at all.
+    // Runtime types come from the generated worker-configuration.d.ts, which supersedes
+    // @cloudflare/workers-types. Deliberately not "node": its URL and iterator types
+    // conflict with the Workers runtime's, and vitest.config.ts — the only Node file
+    // here — is excluded below for the same reason.
+    "types": ["@cloudflare/vitest-pool-workers/types"],
     "strict": true,
     "noEmit": true,
     "allowJs": true,
+    // The Worker sources are plain JS with no annotations; checking them would be a
+    // separate piece of work rather than a switch. The tests are TypeScript and are
+    // checked, which is what catches a changed Worker or D1 contract.
     "checkJs": false,
     "skipLibCheck": true
   },
-  "include": ["src/**/*.js", "test/**/*.ts", "vitest.config.ts"]
+  "include": ["src/**/*.js", "test/**/*.ts", "worker-configuration.d.ts"]
 }

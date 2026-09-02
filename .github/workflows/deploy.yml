@@ -16,6 +16,11 @@ on:
     branches: [main]
   workflow_dispatch:
 
+# Nothing here writes to the repository. Stated rather than inherited, because the default
+# for a token is broader than a deploy needs.
+permissions:
+  contents: read
+
 # A deploy that begins finishes. Two runs overlapping would race the migration against
 # the deploy of the run that replaced it.
 concurrency:
@@ -26,9 +31,12 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      # Actions are pinned to a commit rather than a tag. A tag is a pointer its owner can
+      # move, and these two run with access to the Cloudflare token; a full SHA is the only
+      # immutable way to name what will execute.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - uses: actions/setup-node@v5
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: 22
           cache: npm
@@ -39,6 +47,9 @@ jobs:
       # local D1, so a failure here is a real failure rather than a mock disagreeing.
       - name: test
         run: npm test
+
+      - name: typecheck
+        run: npm run typecheck
 
       # Migrations are additive by convention, so this is safe to run before the code that
       # uses them is live. The reverse order is not.

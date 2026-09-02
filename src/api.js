@@ -10,7 +10,7 @@
 
 import { newId, isSecretId, randomToken } from "./ids.js";
 import { insertSecret, getSecretMeta, consumeSecret, burnSecret } from "./db.js";
-import { json, error, readJson } from "./http.js";
+import { json, error, readJson, MAX_BODY_BYTES } from "./http.js";
 import {
   MAX_CIPHERTEXT_BYTES,
   MAX_LABEL_LENGTH,
@@ -22,6 +22,20 @@ import {
 } from "./limits.js";
 
 const BASE64URL = /^[A-Za-z0-9_-]+$/;
+
+/** Maps a refused body to its response, or returns the parsed body. */
+async function body(request) {
+  const result = await readJson(request);
+  if (result.ok) return { ok: true, value: result.body };
+
+  if (result.reason === "size") {
+    return { ok: false, response: error(`Request body must be at most ${MAX_BODY_BYTES} bytes.`, 413) };
+  }
+  if (result.reason === "type") {
+    return { ok: false, response: error("Content-Type must be application/json.", 415) };
+  }
+  return { ok: false, response: error("Malformed JSON body.", 400) };
+}
 
 function isBase64Url(value, maxLength) {
   return typeof value === "string" && value.length > 0 && value.length <= maxLength && BASE64URL.test(value);
@@ -35,8 +49,6 @@ function isLabelBlob(value) {
 
 /** Rejects the body with a reason, or returns the normalised secret fields. */
 function validateCreate(body) {
-  if (!body) return { ok: false, message: "Malformed JSON body." };
-
   if (!isBase64Url(body.ciphertext, MAX_CIPHERTEXT_BYTES)) {
     return { ok: false, message: `ciphertext must be base64url and at most ${MAX_CIPHERTEXT_BYTES} characters.` };
   }
@@ -47,9 +59,15 @@ function validateCreate(body) {
   if (body.kdfSalt !== undefined && body.kdfSalt !== null && !isBase64Url(body.kdfSalt, 64)) {
     return { ok: false, message: "kdfSalt must be base64url when present." };
   }
-  // SHA-256 in base64url is 43 characters. Opaque to the server, which only ever compares it.
-  if (body.verifier !== undefined && body.verifier !== null && !isBase64Url(body.verifier, 64)) {
-    return { ok: false, message: "verifier must be base64url when present." };
+  /*
+   * Required, not optional. The column is nullable for rows written before verifiers
+   * existed, and letting a client keep creating rows like that would quietly reintroduce
+   * the bug it was added to fix: without one, the server cannot refuse a wrong key and
+   * every failed attempt burns a view. SHA-256 in base64url is 43 characters; the value
+   * is opaque here and only ever compared.
+   */
+  if (!isBase64Url(body.verifier, 64)) {
+    return { ok: false, message: "verifier is required and must be base64url." };
   }
   // The label is ciphertext too — the server has no idea what it says. Its nonce is
   // carried inline as `iv~ciphertext`, so the label alphabet is base64url plus `~`.
@@ -74,7 +92,7 @@ function validateCreate(body) {
       iv: body.iv,
       kdfSalt: body.kdfSalt ?? null,
       label: body.label ?? null,
-      verifier: body.verifier ?? null,
+      verifier: body.verifier,
       ttl,
       maxViews
     }
@@ -82,7 +100,10 @@ function validateCreate(body) {
 }
 
 async function handleCreate(request, env) {
-  const validated = validateCreate(await readJson(request));
+  const parsed = await body(request);
+  if (!parsed.ok) return parsed.response;
+
+  const validated = validateCreate(parsed.value);
   if (!validated.ok) return error(validated.message, 400);
 
   const now = Date.now();
@@ -132,10 +153,16 @@ async function handleMeta(id, env) {
  * not to. No new leak: `GET /api/secrets/{id}` answers that question already, and openly.
  */
 async function handleReveal(request, id, env) {
-  const body = await readJson(request);
-  const verifier = typeof body?.verifier === "string" ? body.verifier : null;
-  if (verifier !== null && !isBase64Url(verifier, 64)) {
-    return error("verifier must be base64url when present.", 400);
+  // A body is optional here: a secret written before verifiers existed is opened without
+  // one, and refusing those would make them permanently unreadable.
+  let verifier = null;
+  if (request.headers.get("Content-Type")) {
+    const parsed = await body(request);
+    if (!parsed.ok) return parsed.response;
+    verifier = typeof parsed.value.verifier === "string" ? parsed.value.verifier : null;
+    if (verifier !== null && !isBase64Url(verifier, 64)) {
+      return error("verifier must be base64url when present.", 400);
+    }
   }
 
   const result = await consumeSecret(env.DB, id, Date.now(), verifier);
@@ -148,8 +175,10 @@ async function handleReveal(request, id, env) {
 }
 
 async function handleBurn(request, id, env) {
-  const body = await readJson(request);
-  const burnToken = body?.burnToken;
+  const parsed = await body(request);
+  if (!parsed.ok) return parsed.response;
+
+  const burnToken = parsed.value.burnToken;
   if (typeof burnToken !== "string" || burnToken.length === 0) {
     return error("A burnToken is required to destroy a secret.", 400);
   }
