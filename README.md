@@ -80,6 +80,11 @@ Pushes to `main` do both through `.github/workflows/deploy.yml`, which needs the
 and [Bitwarden Send](https://bitwarden.com/help/create-send/). The browser-side encryption
 here follows Yopass and Hemmelig.
 
+## Security
+
+Reports go to [mail@airat.top](mailto:mail@airat.top), not to a public issue. What the
+design does and does not protect against is written out in [SECURITY.md](SECURITY.md).
+
 ## License
 
 Apache License 2.0 — see [LICENSE](LICENSE) and [NOTICE](NOTICE).
