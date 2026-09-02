@@ -33,10 +33,31 @@
       rel="stylesheet"
     />
 
-    <!-- TODO: site-verification tags, favicons and screenshot.png, as on the other tools. -->
+    <meta name="msvalidate.01" content="A4ADBC8E0D3C862E117640B06AC788E3" />
+    <meta name="google-site-verification" content="zuHpP1sB8u4uv7gVtMj2RNaGCoxq2lGMYENOCMovy1Y" />
+    <meta name="p:domain_verify" content="ebe9e31b6c3867c499c054b525b7a05e" />
+    <!-- FIXME: placeholder, copied from pass.airat.top. Unlike the three tags above,
+         which are account-wide and shared by every AiratTop tool, this token is issued
+         per domain and each sibling project carries its own. Replace it with the one
+         Meta Business Manager issues for secret.airat.top; until then verification for
+         this domain does not pass. -->
+    <meta name="facebook-domain-verification" content="o38js0c8d3pqoqlgxe0pk6h9o2d7e7" />
+
     <link rel="canonical" href="https://secret.airat.top/" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
+    <link rel="icon" href="/favicon.ico" />
     <link rel="manifest" href="/site.webmanifest" />
+
     <link rel="stylesheet" href="/styles.css" />
+
+    <!-- No analytics, and no third-party script anywhere on this site — unlike the other
+         AiratTop tools, which carry the shared GA counter. A counter here would be safe
+         on this page and unsafe on `/{id}#{key}`, where `gtag` would report the
+         decryption key to Google as part of `page_location`. Rather than run one on half
+         the site and explain the seam, there is none: traffic is counted server-side by
+         Cloudflare, which needs no script and never sees a fragment. -->
   </head>
   <body>
     <div class="bg-glow" aria-hidden="true"></div>

@@ -25,12 +25,11 @@
     "html_handling": "none"
   },
 
-  // database_id is filled in after `wrangler d1 create secret-airat`.
   "d1_databases": [
     {
       "binding": "DB",
       "database_name": "secret-airat",
-      "database_id": "TODO_RUN_WRANGLER_D1_CREATE",
+      "database_id": "3c81e9ea-41a6-45e6-9d56-32608414b77f",
       "migrations_dir": "migrations"
     }
   ],

@@ -21,6 +21,9 @@ runs out.
 A dump of the database is a pile of blobs nobody can read. Losing the link loses the
 secret, which is the trade this design makes on purpose.
 
+There are no analytics and no third-party scripts on any page. A counter would report
+`location.href`, and on a secret's page that string contains the decryption key.
+
 An optional passphrase is folded into the key with PBKDF2 (310 000 iterations, SHA-256),
 so a link that leaks is not enough on its own.
 

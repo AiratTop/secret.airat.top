@@ -17,8 +17,19 @@
       href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap"
       rel="stylesheet"
     />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
+    <link rel="icon" href="/favicon.ico" />
     <link rel="manifest" href="/site.webmanifest" />
     <link rel="stylesheet" href="/styles.css" />
+
+    <!-- No third-party script of any kind, here or on the landing page. This page's own
+         URL is `/{id}#{key}` and the fragment is the decryption key, so anything that
+         reports `location.href` — gtag does, as `page_location` — would hand that key to
+         a third party and undo the one property this service is built on.
+         Site-verification tags are absent for the separate reason that they are pointless
+         on a noindex page. -->
   </head>
   <body>
     <div class="bg-glow" aria-hidden="true"></div>

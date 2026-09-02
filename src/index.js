@@ -30,7 +30,10 @@ function serveAsset(request, env, assetPath) {
 
 async function handleHealth(env) {
   try {
-    await env.DB.prepare("SELECT 1").first();
+    // Reads the table rather than `SELECT 1`, which answers even when no migration has
+    // ever run — a Worker deployed ahead of its schema reported healthy right up until
+    // the first person tried to store something.
+    await env.DB.prepare("SELECT id FROM secrets LIMIT 1").first();
     return json({ status: "ok", database: "ok" });
   } catch {
     // 503 rather than 200-with-a-flag: a status checker should see this as down.
@@ -95,6 +98,15 @@ export default {
           "Allow: /app.js",
           "Allow: /crypto.js",
           "Allow: /site.webmanifest",
+          // Google fetches the favicon with a crawler, so `Disallow: /` would otherwise
+          // cost the landing page its icon in search results.
+          "Allow: /favicon.ico",
+          "Allow: /favicon-16x16.png",
+          "Allow: /favicon-32x32.png",
+          "Allow: /apple-touch-icon.png",
+          "Allow: /android-chrome-192x192.png",
+          "Allow: /android-chrome-512x512.png",
+          "Allow: /screenshot.png",
           "Disallow: /",
           "",
           `Sitemap: https://${env.SITE_HOST}/sitemap.xml`,
