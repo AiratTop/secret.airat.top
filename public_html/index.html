@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>secret.airat.top | Share Secrets With Self-Destructing Links</title>
+    <meta
+      name="description"
+      content="Share a password or a note through a link that destroys itself. Encrypted in your browser; the key never reaches the server."
+    />
+    <meta
+      name="keywords"
+      content="one time secret, burn after reading, share password securely, self-destructing link, encrypted note, airattop"
+    />
+    <meta name="author" content="AiratTop" />
+
+    <!-- Open Graph -->
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://secret.airat.top/" />
+    <meta property="og:title" content="Secret" />
+    <meta property="og:description" content="Share secrets with self-destructing links." />
+    <meta property="og:image" content="https://secret.airat.top/screenshot.png" />
+
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary_large_image" />
+    <meta property="twitter:title" content="Secret" />
+    <meta property="twitter:description" content="Share secrets with self-destructing links." />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap"
+      rel="stylesheet"
+    />
+
+    <!-- TODO: site-verification tags, favicons and screenshot.png, as on the other tools. -->
+    <link rel="canonical" href="https://secret.airat.top/" />
+    <link rel="manifest" href="/site.webmanifest" />
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <div class="bg-glow" aria-hidden="true"></div>
+
+    <main class="shell">
+      <header class="brand">
+        <div class="brand-copy">
+          <p class="brand-eyebrow">secret.airat.top</p>
+          <h1>Share secrets with self-destructing links</h1>
+          <p class="brand-subtitle">
+            Encrypted in your browser. The key lives in the link, never on the server. Open-source.
+          </p>
+        </div>
+        <div class="brand-actions">
+          <a class="repo-link" href="https://github.com/AiratTop/secret.airat.top" target="_blank" rel="noreferrer">
+            GitHub
+          </a>
+        </div>
+      </header>
+
+      <!-- Compose -->
+      <section class="card" id="composeCard">
+        <div class="field">
+          <label for="secretInput">Secret</label>
+          <textarea
+            id="secretInput"
+            placeholder="Paste the password, token, or note you need to hand over."
+            spellcheck="false"
+            autocomplete="off"
+          ></textarea>
+          <p class="hint" id="sizeHint">Encrypted locally before anything is sent.</p>
+        </div>
+
+        <div class="field">
+          <label for="labelInput">Label <span class="hint">(optional)</span></label>
+          <input id="labelInput" type="text" placeholder="staging DB password" autocomplete="off" />
+          <p class="hint">Shown to the recipient before they open the secret. Encrypted too.</p>
+        </div>
+
+        <div class="row">
+          <div class="field">
+            <label for="ttlSelect">Expires after</label>
+            <select id="ttlSelect"></select>
+          </div>
+          <div class="field">
+            <label for="viewsSelect">Can be opened</label>
+            <select id="viewsSelect"></select>
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="passphraseInput">Passphrase <span class="hint">(optional)</span></label>
+          <input id="passphraseInput" type="password" placeholder="Extra layer, shared over another channel" autocomplete="new-password" />
+          <p class="hint">Send it separately from the link — that is the whole point of having one.</p>
+        </div>
+
+        <div class="actions">
+          <button class="primary" id="createButton" type="button">Create link</button>
+          <p class="notice" id="createNotice"></p>
+        </div>
+      </section>
+
+      <!-- Result -->
+      <section class="card" id="resultCard" hidden>
+        <div class="field">
+          <label for="resultLink">Your one-time link</label>
+          <div class="secret-link"><span id="resultLink"></span></div>
+          <p class="hint">
+            Copy it now. It is not stored anywhere else, and the part after <code>#</code> never
+            reached the server — we cannot show it to you again.
+          </p>
+        </div>
+
+        <ul class="meta-list" id="resultMeta"></ul>
+
+        <div class="actions">
+          <button class="repo-link" id="copyButton" type="button">Copy link</button>
+          <button class="repo-link danger" id="burnButton" type="button">Destroy now</button>
+          <button class="repo-link" id="newButton" type="button">Create another</button>
+          <p class="notice" id="resultNotice"></p>
+        </div>
+      </section>
+
+      <footer>
+        <p>
+          Open-source ·
+          <a href="https://github.com/AiratTop/secret.airat.top" target="_blank" rel="noreferrer">GitHub</a> ·
+          <a href="https://airat.top" target="_blank" rel="noreferrer">airat.top</a>
+        </p>
+      </footer>
+    </main>
+
+    <script type="module" src="/app.js"></script>
+  </body>
+</html>

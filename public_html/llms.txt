@@ -1,0 +1,27 @@
+# secret.airat.top
+
+Summary:
+Secret is a one-time secret sharing service. A secret is encrypted in the browser with
+AES-GCM, the key is placed in the URL fragment, and only the ciphertext is stored. The
+server cannot decrypt what it holds. Links expire on a timer and can be limited to a
+number of opens, with one open (burn after reading) as the default.
+
+Primary URL:
+https://secret.airat.top
+
+Key features:
+- Client-side AES-256-GCM encryption; the key never leaves the browser.
+- Optional passphrase layered on top of the link key via PBKDF2.
+- Expiry from 5 minutes to 30 days, and a view limit from 1 to 10.
+- Opening a secret is an explicit action, so link previewers do not consume it.
+- The creator can destroy a secret early with a burn token issued once at creation.
+
+Tech stack:
+Cloudflare Workers, Cloudflare D1, HTML, CSS, and vanilla JavaScript.
+
+Privacy:
+No accounts. No plaintext, keys, or passphrases reach the server. Expired rows are
+deleted on a schedule and are unreadable before then.
+
+Contact:
+AiratTop - mail@airat.top
