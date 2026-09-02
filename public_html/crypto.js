@@ -38,28 +38,71 @@ async function importAesKey(bytes) {
 }
 
 /**
- * Turns the link key — and, when there is one, the passphrase — into an AES-GCM key.
+ * Turns the link key — and, when there is one, the passphrase — into 32 key bytes.
  *
  * The two are concatenated into PBKDF2's password rather than the passphrase being used
  * alone. A passphrase people can remember has nowhere near 256 bits in it, and folding
  * the link key in means the derived key is at least as strong as the no-passphrase case.
+ *
+ * Raw bytes rather than a `CryptoKey` because the verifier below needs to hash them.
+ * `deriveBits(…, 256)` returns exactly what `deriveKey(…, AES-GCM, 256)` used to consume,
+ * so links minted before this existed still decrypt.
  */
-export async function deriveKey(linkKeyBytes, passphrase, saltBytes) {
-  if (!saltBytes) return importAesKey(linkKeyBytes);
+async function deriveKeyBytes(linkKeyBytes, passphrase, saltBytes) {
+  if (!saltBytes) return linkKeyBytes;
 
   const passphraseBytes = encoder.encode(passphrase ?? "");
   const material = new Uint8Array(linkKeyBytes.length + passphraseBytes.length);
   material.set(linkKeyBytes, 0);
   material.set(passphraseBytes, linkKeyBytes.length);
 
-  const baseKey = await crypto.subtle.importKey("raw", material, "PBKDF2", false, ["deriveKey"]);
-  return crypto.subtle.deriveKey(
+  const baseKey = await crypto.subtle.importKey("raw", material, "PBKDF2", false, ["deriveBits"]);
+  const bits = await crypto.subtle.deriveBits(
     { name: "PBKDF2", salt: saltBytes, iterations: PBKDF2_ITERATIONS, hash: "SHA-256" },
     baseKey,
-    { name: "AES-GCM", length: 256 },
-    false,
-    ["encrypt", "decrypt"]
+    256
   );
+  return new Uint8Array(bits);
+}
+
+export async function deriveKey(linkKeyBytes, passphrase, saltBytes) {
+  return importAesKey(await deriveKeyBytes(linkKeyBytes, passphrase, saltBytes));
+}
+
+/**
+ * A value the server can check without learning anything.
+ *
+ * The problem it solves: the server cannot tell a correct passphrase from a wrong one —
+ * that is the whole design — so it used to spend a view on every attempt, and one wrong
+ * guess destroyed a burn-after-reading secret. The client now proves it holds the right
+ * key before a view is spent.
+ *
+ * Safe to store and to send. It is a hash of a 256-bit key the server never has, so it
+ * cannot be inverted, and anyone able to test candidate passphrases against it already
+ * holds the link — and could test them against the AES-GCM tag instead, which is the same
+ * work. It therefore enables no attack that the ciphertext did not already permit.
+ *
+ * Context-prefixed so this digest cannot be mistaken for, or replayed as, a hash computed
+ * for some other purpose over the same key.
+ */
+const VERIFIER_CONTEXT = "secret.airat.top/verifier/v1";
+
+async function computeVerifier(keyBytes) {
+  const context = encoder.encode(VERIFIER_CONTEXT);
+  const input = new Uint8Array(context.length + keyBytes.length);
+  input.set(context, 0);
+  input.set(keyBytes, context.length);
+  return toBase64Url(await crypto.subtle.digest("SHA-256", input));
+}
+
+/** The verifier for a link and passphrase the reader has supplied. */
+export async function deriveVerifier(linkKeyB64, passphrase, saltB64) {
+  const keyBytes = await deriveKeyBytes(
+    fromBase64Url(linkKeyB64),
+    passphrase,
+    saltB64 ? fromBase64Url(saltB64) : null
+  );
+  return computeVerifier(keyBytes);
 }
 
 /**
@@ -70,7 +113,8 @@ export async function encryptText(plaintext, passphrase) {
   const linkKey = randomBytes(32);
   const salt = passphrase ? randomBytes(16) : null;
   const iv = randomBytes(12);
-  const key = await deriveKey(linkKey, passphrase, salt);
+  const keyBytes = await deriveKeyBytes(linkKey, passphrase, salt);
+  const key = await importAesKey(keyBytes);
 
   const ciphertext = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, encoder.encode(plaintext));
 
@@ -78,6 +122,7 @@ export async function encryptText(plaintext, passphrase) {
     ciphertext: toBase64Url(ciphertext),
     iv: toBase64Url(iv),
     kdfSalt: salt ? toBase64Url(salt) : null,
+    verifier: await computeVerifier(keyBytes),
     linkKey: toBase64Url(linkKey)
   };
 }

@@ -47,6 +47,10 @@ function validateCreate(body) {
   if (body.kdfSalt !== undefined && body.kdfSalt !== null && !isBase64Url(body.kdfSalt, 64)) {
     return { ok: false, message: "kdfSalt must be base64url when present." };
   }
+  // SHA-256 in base64url is 43 characters. Opaque to the server, which only ever compares it.
+  if (body.verifier !== undefined && body.verifier !== null && !isBase64Url(body.verifier, 64)) {
+    return { ok: false, message: "verifier must be base64url when present." };
+  }
   // The label is ciphertext too — the server has no idea what it says. Its nonce is
   // carried inline as `iv~ciphertext`, so the label alphabet is base64url plus `~`.
   if (body.label !== undefined && body.label !== null && !isLabelBlob(body.label)) {
@@ -70,6 +74,7 @@ function validateCreate(body) {
       iv: body.iv,
       kdfSalt: body.kdfSalt ?? null,
       label: body.label ?? null,
+      verifier: body.verifier ?? null,
       ttl,
       maxViews
     }
@@ -117,10 +122,29 @@ async function handleMeta(id, env) {
   return json(meta);
 }
 
-async function handleReveal(id, env) {
-  const revealed = await consumeSecret(env.DB, id, Date.now());
-  if (!revealed) return error("This secret does not exist, has expired, or has already been destroyed.", 404, "gone");
-  return json(revealed);
+/**
+ * The only endpoint with a side effect, and the only one that can refuse without having
+ * one. A caller that cannot produce the verifier spends no view: it used to spend one on
+ * every attempt, so a single wrong passphrase — or a click with the box still empty —
+ * destroyed a burn-after-reading secret.
+ *
+ * The 403 does tell a caller that this id is live, which the 404s elsewhere are careful
+ * not to. No new leak: `GET /api/secrets/{id}` answers that question already, and openly.
+ */
+async function handleReveal(request, id, env) {
+  const body = await readJson(request);
+  const verifier = typeof body?.verifier === "string" ? body.verifier : null;
+  if (verifier !== null && !isBase64Url(verifier, 64)) {
+    return error("verifier must be base64url when present.", 400);
+  }
+
+  const result = await consumeSecret(env.DB, id, Date.now(), verifier);
+  if (result.ok) return json(result.secret);
+
+  if (result.reason === "verifier") {
+    return error("Wrong passphrase, or the link is incomplete. No view was used.", 403, "verifier");
+  }
+  return error("This secret does not exist, has expired, or has already been destroyed.", 404, "gone");
 }
 
 async function handleBurn(request, id, env) {
@@ -157,7 +181,7 @@ export function routeApi(request, env, url) {
 
   if (revealSuffix) {
     if (request.method !== "POST") return error("Method not allowed. Revealing a secret consumes a view.", 405);
-    return handleReveal(id, env);
+    return handleReveal(request, id, env);
   }
 
   if (request.method === "GET") return handleMeta(id, env);

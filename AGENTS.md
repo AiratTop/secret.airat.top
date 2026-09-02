@@ -55,6 +55,12 @@ convenient it looks.
   Splitting that into a read and a write reintroduces the double-read race; the two
   concurrency tests in `test/api.test.ts` fail when it is, which was verified by breaking
   it on purpose rather than assumed.
+- A view is spent only when the caller proves it holds the right key. The client sends a
+  verifier (SHA-256 over a context string and the derived key); `consumeSecret` matches on
+  it inside the same UPDATE, so a wrong passphrase or a truncated link changes no row.
+  Checked only when the stored verifier is non-null, so secrets from before `0002` still
+  open. `/reveal` answering 403 does reveal that an id is live — no new leak, because
+  `GET /api/secrets/{id}` answers that openly already.
 - "Does not exist", "expired" and "already read" are one 404 with one message on purpose;
   telling them apart makes the endpoint an oracle for which ids were ever issued.
 - Only `/` is indexable. Every other response carries `X-Robots-Tag: noindex` and is

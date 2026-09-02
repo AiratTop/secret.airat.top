@@ -13,8 +13,8 @@ export async function insertSecret(db, secret) {
   await db
     .prepare(
       `INSERT INTO secrets
-         (id, ciphertext, iv, kdf_salt, label, max_views, views, size_bytes, created_at, expires_at, burn_token)
-       VALUES (?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?)`
+         (id, ciphertext, iv, kdf_salt, label, max_views, views, size_bytes, created_at, expires_at, burn_token, verifier)
+       VALUES (?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?)`
     )
     .bind(
       secret.id,
@@ -26,7 +26,8 @@ export async function insertSecret(db, secret) {
       secret.sizeBytes,
       secret.createdAt,
       secret.expiresAt,
-      secret.burnToken
+      secret.burnToken,
+      secret.verifier ?? null
     )
     .run();
 }
@@ -72,18 +73,30 @@ export async function getSecretMeta(db, id, now) {
  * serialises them, and the second one matches no row because `views < max_views` is no
  * longer true. Reading and then writing would hand the secret to both of them.
  */
-export async function consumeSecret(db, id, now) {
+export async function consumeSecret(db, id, now, verifier = null) {
+  // The verifier is part of the WHERE rather than a check before it, so a wrong key
+  // matches no row and spends nothing. Putting it in a separate SELECT first would
+  // reopen the double-read race the single statement exists to close.
   const row = await db
     .prepare(
       `UPDATE secrets
           SET views = views + 1
         WHERE id = ? AND expires_at > ? AND views < max_views
+          AND (verifier IS NULL OR verifier = ?)
         RETURNING id, ciphertext, iv, kdf_salt, label, max_views, views, expires_at`
     )
-    .bind(id, now)
+    .bind(id, now, verifier)
     .first();
 
-  if (!row) return null;
+  if (!row) {
+    // Nothing was consumed, and the reader deserves to know which of the two reasons it
+    // was. A read, so it cannot itself destroy anything.
+    const live = await db
+      .prepare(`SELECT verifier FROM secrets WHERE id = ? AND expires_at > ? AND views < max_views`)
+      .bind(id, now)
+      .first();
+    return { ok: false, reason: live && live.verifier !== null ? "verifier" : "gone" };
+  }
 
   const exhausted = row.views >= row.max_views;
   // The row has given up everything it had. Deleting it now rather than leaving it for the
@@ -91,14 +104,17 @@ export async function consumeSecret(db, id, now) {
   if (exhausted) await deleteSecret(db, id);
 
   return {
-    id: row.id,
-    ciphertext: row.ciphertext,
-    iv: row.iv,
-    kdfSalt: row.kdf_salt,
-    label: row.label,
-    viewsLeft: Math.max(0, row.max_views - row.views),
-    burned: exhausted,
-    expiresAt: row.expires_at
+    ok: true,
+    secret: {
+      id: row.id,
+      ciphertext: row.ciphertext,
+      iv: row.iv,
+      kdfSalt: row.kdf_salt,
+      label: row.label,
+      viewsLeft: Math.max(0, row.max_views - row.views),
+      burned: exhausted,
+      expiresAt: row.expires_at
+    }
   };
 }
 

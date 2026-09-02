@@ -1,0 +1,13 @@
+-- A value that proves the reader holds the right key, without telling the server anything.
+--
+-- The problem it fixes: the server cannot distinguish a correct passphrase from a wrong
+-- one — it never sees either — so `POST /reveal` spent a view on every attempt. One wrong
+-- guess, or one click with the passphrase box still empty, destroyed a burn-after-reading
+-- secret before its recipient had read a word of it.
+--
+-- The client now sends SHA-256 over a context string and the derived key. The consuming
+-- UPDATE matches on it, so an attempt with the wrong key changes no row and costs no view.
+--
+-- Nullable, and checked only when present: secrets created before this migration have no
+-- verifier and keep the old behaviour rather than becoming unreadable.
+ALTER TABLE secrets ADD COLUMN verifier TEXT;

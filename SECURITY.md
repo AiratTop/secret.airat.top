@@ -22,6 +22,12 @@ A secret is destroyed when its view allowance runs out or its deadline passes, w
 comes first. Expiry is enforced in every read query, so an expired secret is unreadable
 before any cleanup has run.
 
+An attempt that cannot decrypt does not count as a view. The client proves it holds the
+right key by sending a hash of it, which the server compares before consuming anything, so
+a wrong passphrase or an incomplete link can be retried. The hash is over a 256-bit key the
+server never receives; testing candidate passphrases against it requires the link, and
+whoever has the link can already test them against the AES-GCM tag.
+
 ## What It Does Not Guarantee
 
 These are properties of the design rather than bugs. Reports of them are still welcome if

@@ -30,6 +30,11 @@ There are no analytics and no third-party scripts on any page. A counter would r
 An optional passphrase is folded into the key with PBKDF2 (310 000 iterations, SHA-256),
 so a link that leaks is not enough on its own.
 
+Because the server cannot tell a right passphrase from a wrong one, the client sends a
+*verifier* — a hash of the derived key — which the server compares before spending a view.
+A wrong passphrase or an incomplete link is therefore refused for free, rather than
+destroying a burn-after-reading secret on the first mistyped attempt.
+
 ## API
 
 Base URL: `https://secret.airat.top`. No key, no account, no rate limit. Every response is
@@ -58,6 +63,7 @@ dependencies.
 | `ciphertext` | yes | base64url, at most 65536 characters |
 | `iv` | yes | base64url AES-GCM nonce |
 | `kdfSalt` | no | base64url; present means a passphrase is required to decrypt |
+| `verifier` | no | base64url; lets the server refuse a wrong key without spending a view |
 | `label` | no | `iv~ciphertext`, both base64url — encrypted like everything else |
 | `ttl` | no | seconds, 60 to 2592000 (30 days). Default 86400 |
 | `maxViews` | no | 1 to 10. Default 1, which is burn-after-reading |
@@ -116,8 +122,14 @@ curl 'https://secret.airat.top/api/secrets/06G6822EJ5S7XCMAQKKQY1WC68'
 The only call with a side effect: it consumes one view, and deletes the secret when the
 last one is used. `GET` here returns `405` rather than the ciphertext, deliberately.
 
+Send the `verifier` for the key you hold. The server compares it and refuses a mismatch
+with `403` **without spending a view**, so a wrong passphrase or a truncated link costs
+nothing. It is optional, and secrets stored without one are not checked.
+
 ```bash
-curl -X POST 'https://secret.airat.top/api/secrets/06G6822EJ5S7XCMAQKKQY1WC68/reveal'
+curl -X POST 'https://secret.airat.top/api/secrets/06G6822EJ5S7XCMAQKKQY1WC68/reveal' \
+  -H 'Content-Type: application/json' \
+  -d '{"verifier": "0Rk8yTn2wq7pQF3mJ1sX9dLbVhC5aZuEoNr4tGiKyPs"}'
 ```
 
 ```json
@@ -235,6 +247,7 @@ console.log(await decryptText(revealed.ciphertext, revealed.iv, enc.linkKey, nul
 | Status | Meaning |
 | --- | --- |
 | `400` | The body is malformed, or a field is outside its limits |
+| `403` | `/reveal` only: the verifier does not match. No view was spent — retry |
 | `404` | Gone, expired, never issued, wrong burn token, or a malformed id |
 | `405` | Wrong method — notably `GET` on `/reveal`, which has a side effect |
 | `503` | `/health` only: D1 unreachable |
