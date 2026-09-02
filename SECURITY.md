@@ -50,7 +50,8 @@ you think one is worse than stated, but they are known:
   encodes its own creation time.
 - **Rate limiting is per address, and an address is cheap.** Ten writes and sixty reads a
   minute are counted exactly, per caller, but a caller with many addresses has many
-  allowances. It is flood protection, not a quota.
+  allowances, and a caller behind a shared NAT shares one. It is flood protection, not a
+  quota and not an identity.
 - **Storage is not quota'd.** The limits above bound how fast the database can be filled,
   not how large it can get.
 
