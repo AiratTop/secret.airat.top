@@ -113,6 +113,7 @@ body::before {
 
 .brand { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
 .brand-copy { max-width: 560px; }
+.brand-actions { display: flex; gap: 10px; align-items: center; flex-shrink: 0; }
 .brand-eyebrow {
   margin: 0 0 6px;
   font-family: "JetBrains Mono", ui-monospace, monospace;
@@ -263,16 +264,17 @@ button.danger { border-color: var(--danger); color: var(--danger); }
    compete with the link for attention. */
 .link-danger {
   padding: 9px 14px;
-  border: 1px solid transparent;
+  border: 1px solid var(--danger);
   border-radius: 999px;
   background: none;
-  color: var(--muted);
+  color: var(--danger);
   font-family: inherit;
   font-size: 0.88rem;
   cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
 }
-.link-danger:hover:not(:disabled) { border-color: var(--danger); color: var(--danger); }
-.link-danger:disabled { opacity: 0.5; cursor: default; }
+.link-danger:hover:not(:disabled) { background: var(--danger); color: var(--surface); }
+.link-danger:disabled { opacity: 0.45; cursor: default; }
 
 /* A revealed secret is prose or a credential, not a URL: wrap on spaces, keep newlines. */
 .link-copy-url.is-text {
