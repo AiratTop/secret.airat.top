@@ -41,15 +41,16 @@ async function insertRaw(fields: Record<string, unknown>) {
     created_at: Date.now(),
     expires_at: Date.now() + 60_000,
     burn_token: randomToken(),
+    verifier: null,
     ...fields
   };
   await env.DB.prepare(
-    `INSERT INTO secrets (id, ciphertext, iv, kdf_salt, label, max_views, views, size_bytes, created_at, expires_at, burn_token)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    `INSERT INTO secrets (id, ciphertext, iv, kdf_salt, label, max_views, views, size_bytes, created_at, expires_at, burn_token, verifier)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
   )
     .bind(
       row.id, row.ciphertext, row.iv, row.kdf_salt, row.label, row.max_views,
-      row.views, row.size_bytes, row.created_at, row.expires_at, row.burn_token
+      row.views, row.size_bytes, row.created_at, row.expires_at, row.burn_token, row.verifier
     )
     .run();
   return row;
@@ -192,6 +193,85 @@ describe("revealing", () => {
       Array.from({ length: 5 }, () => call(`/api/secrets/${created.id}/reveal`, { method: "POST" }))
     );
     expect(responses.filter((r) => r.status === 200)).toHaveLength(2);
+  });
+
+  /**
+   * The reported bug, in the order it was hit: a one-view secret with a passphrase, the
+   * reveal button pressed with the box still empty, and then the passphrase typed — by
+   * which point the only view was gone.
+   */
+  it("does not spend a view on an attempt that cannot decrypt", async () => {
+    const created = await createSecret({ kdfSalt: "c2FsdA", verifier: "the-right-one", maxViews: 1 });
+
+    const noVerifier = await call(`/api/secrets/${created.id}/reveal`, { method: "POST" });
+    expect(noVerifier.status).toBe(403);
+
+    const wrongVerifier = await call(`/api/secrets/${created.id}/reveal`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ verifier: "the-wrong-one" })
+    });
+    expect(wrongVerifier.status).toBe(403);
+
+    // Untouched: still there, still one view, and it still opens.
+    const meta = await (await call(`/api/secrets/${created.id}`)).json();
+    expect(meta.viewsLeft).toBe(1);
+
+    const right = await call(`/api/secrets/${created.id}/reveal`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ verifier: "the-right-one" })
+    });
+    expect(right.status).toBe(200);
+    expect((await right.json()).burned).toBe(true);
+  });
+
+  it("survives a run of wrong attempts and still opens once", async () => {
+    const created = await createSecret({ kdfSalt: "c2FsdA", verifier: "right", maxViews: 1 });
+
+    for (let i = 0; i < 20; i++) {
+      const response = await call(`/api/secrets/${created.id}/reveal`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ verifier: `guess-${i}` })
+      });
+      expect(response.status).toBe(403);
+    }
+
+    const row = await env.DB.prepare("SELECT views FROM secrets WHERE id = ?").bind(created.id).first();
+    expect(row!.views).toBe(0);
+  });
+
+  it("refuses a wrong key without saying whether it was the passphrase or the link", async () => {
+    const created = await createSecret({ verifier: "right" });
+    const response = await call(`/api/secrets/${created.id}/reveal`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ verifier: "wrong" })
+    });
+    expect(response.status).toBe(403);
+    expect((await response.json()).code).toBe("verifier");
+  });
+
+  /**
+   * A secret stored before verifiers existed carries none. It must keep opening rather
+   * than becoming permanently unreadable, which is what a mandatory check would do.
+   */
+  it("still opens a secret that predates verifiers", async () => {
+    const row = await insertRaw({ verifier: null });
+    const response = await call(`/api/secrets/${row.id}/reveal`, { method: "POST" });
+    expect(response.status).toBe(200);
+  });
+
+  it("does not let a wrong verifier destroy an expired-looking secret either", async () => {
+    const row = await insertRaw({ expires_at: Date.now() - 1, verifier: "right" });
+    const response = await call(`/api/secrets/${row.id}/reveal`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ verifier: "wrong" })
+    });
+    // Gone beats wrong-key: an expired secret must not be distinguishable by guessing.
+    expect(response.status).toBe(404);
   });
 
   it("only answers POST, because it has a side effect", async () => {

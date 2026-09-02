@@ -7,7 +7,7 @@
  * runs when a person clicks.
  */
 
-import { decryptText, decryptLabel } from "/crypto.js";
+import { decryptText, decryptLabel, deriveVerifier } from "/crypto.js";
 import { formatDateTime, formatRelative } from "/format.js";
 
 const els = {
@@ -98,10 +98,43 @@ async function load() {
 }
 
 async function reveal() {
+  const passphrase = meta.hasPassword ? els.passphrase.value : null;
+
+  // Never sent at all when the box is empty. The server cannot judge a passphrase, so a
+  // request it cannot satisfy is a request worth not making — and this was the shortest
+  // path to destroying a one-view secret: open the link, click, read the prompt.
+  if (meta.hasPassword && !passphrase) {
+    notice(els.gateNotice, "This secret needs its passphrase before it can be opened.", "error");
+    els.passphrase.focus();
+    return;
+  }
+
   els.reveal.disabled = true;
   notice(els.gateNotice, "Retrieving…");
 
-  const response = await fetch(`/api/secrets/${id}/reveal`, { method: "POST" });
+  // Proves we hold the right key without disclosing it, so the server can refuse without
+  // spending a view.
+  const verifier = await deriveVerifier(linkKey, passphrase, meta.kdfSalt);
+
+  const response = await fetch(`/api/secrets/${id}/reveal`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ verifier })
+  });
+
+  if (response.status === 403) {
+    els.reveal.disabled = false;
+    notice(
+      els.gateNotice,
+      meta.hasPassword
+        ? "Wrong passphrase. Nothing was used up — try again."
+        : "This link is incomplete, so the secret cannot be decrypted. No view was used.",
+      "error"
+    );
+    if (meta.hasPassword) els.passphrase.select();
+    return;
+  }
+
   if (!response.ok) {
     showGone();
     return;
@@ -110,7 +143,6 @@ async function reveal() {
   const body = await response.json();
 
   try {
-    const passphrase = meta.hasPassword ? els.passphrase.value : null;
     const plaintext = await decryptText(body.ciphertext, body.iv, linkKey, passphrase, body.kdfSalt);
 
     if (body.label) {
@@ -133,13 +165,15 @@ async function reveal() {
       body.burned ? "success" : ""
     );
   } catch {
-    // The view was already consumed by the time decryption failed — say so plainly,
-    // because a wrong passphrase here is not a retryable mistake on a one-view secret.
+    // Reaching here means the server accepted the verifier and the ciphertext still would
+    // not open, which a matching key should make impossible. It remains reachable for
+    // secrets created before verifiers existed: those carry none, the server cannot
+    // refuse, and the view is gone.
     els.reveal.disabled = false;
     notice(
       els.gateNotice,
       meta.hasPassword
-        ? "Wrong passphrase, or the link is incomplete. Note that this attempt used up a view."
+        ? "Wrong passphrase, or the link is incomplete. This secret predates the check that would have caught it without using a view."
         : "This link is incomplete and the secret cannot be decrypted.",
       "error"
     );

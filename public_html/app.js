@@ -93,6 +93,7 @@ async function create() {
         ciphertext: encrypted.ciphertext,
         iv: encrypted.iv,
         kdfSalt: encrypted.kdfSalt,
+        verifier: encrypted.verifier,
         label,
         ttl: Number(els.ttl.value),
         maxViews: Number(els.views.value)
