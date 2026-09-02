@@ -48,10 +48,9 @@ you think one is worse than stated, but they are known:
 - **Metadata is visible to the server.** Ciphertext length, creation time, expiry, view
   allowance, and whether a passphrase is set are stored in the clear. The identifier
   encodes its own creation time.
-- **Rate limiting is per colo, not global.** Cloudflare's rate limit binding counts
-  within one data centre, so a caller distributed across many sees a higher effective
-  ceiling than the stated 10 writes and 60 reads a minute. It is flood protection, not a
-  quota.
+- **Rate limiting is per address, and an address is cheap.** Ten writes and sixty reads a
+  minute are counted exactly, per caller, but a caller with many addresses has many
+  allowances. It is flood protection, not a quota.
 - **Storage is not quota'd.** The limits above bound how fast the database can be filled,
   not how large it can get.
 

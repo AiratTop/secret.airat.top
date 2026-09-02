@@ -102,7 +102,12 @@ describe("flood protection", () => {
     }
 
     expect(response.status).toBe(429);
-    expect(response.headers.get("Retry-After")).toBe("60");
+
+    // The real remainder of the window, not a fixed 60: a caller told to wait a minute
+    // when four seconds would do comes back a minute late, every time.
+    const retryAfter = Number(response.headers.get("Retry-After"));
+    expect(retryAfter).toBeGreaterThan(0);
+    expect(retryAfter).toBeLessThanOrEqual(60);
     expect(((await response.json()) as { code: string }).code).toBe("rate_limited");
   });
 });

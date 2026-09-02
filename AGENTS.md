@@ -68,10 +68,15 @@ convenient it looks.
 - `verifier` is required on create. The column is nullable only for rows written before
   it existed; accepting a create without one would quietly reintroduce the bug where a
   failed attempt burns a view.
-- Rate limiting lives in `enforceRateLimit` and is per address, with separate namespaces
-  for writes and reads so a flood of creates cannot lock a recipient out of a secret about
-  to expire. The bindings are absent in the local dev server; tests give every request its
-  own address so the limiter does not make the suite order-dependent.
+- Rate limiting lives in `enforceRateLimit` and counts in a Durable Object
+  (`src/rate-limiter.js`), one per caller, with separate keys for writes and reads so a
+  flood of creates cannot lock a recipient out of a secret about to expire. **Not**
+  Cloudflare's rate limit binding: it was tried first and never refused anything on this
+  account — fifty consecutive requests against a limit of one a minute were all allowed —
+  so if someone proposes switching back, verify it enforces before believing it. Every
+  `/api/` path goes through the limiter, `/api/config` included; it used to be answered
+  ahead of the check and was therefore free to hammer. Tests give every request its own
+  address so the limiter does not make the suite order-dependent.
 - Request bodies are capped in `readJson` before parsing, by declared length and again
   while reading, because `request.json()` buffers everything first.
 - `npm run typecheck` regenerates `worker-configuration.d.ts` with `wrangler types` and

@@ -41,7 +41,8 @@ Base URL: `https://secret.airat.top`. No key and no account. Every response is J
 `no-store`, and `noindex`.
 
 Rate limited per caller: 10 writes and 60 reads a minute, answered with `429` and a
-`Retry-After`. Request bodies are capped at 128 KB and must be `application/json`.
+`Retry-After` giving the real remainder of the window. Request bodies are capped at 128 KB
+and must be `application/json`.
 
 One thing to understand before reading further: **the API cannot create a usable link on
 its own.** The server never receives a key, so a client must encrypt the secret itself and

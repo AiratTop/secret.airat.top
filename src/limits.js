@@ -33,5 +33,16 @@ export const DEFAULT_MAX_VIEWS = 1;
  * a flood, so the work is bounded; running a handful of bounded batches means an hour of
  * accumulated junk is gone in one cron rather than in six.
  */
+/**
+ * Flood protection, per caller per minute. Writing is far tighter than reading: creating
+ * is the expensive, persistent act, and ten links a minute is more than a person makes
+ * and far less than a script wants. Reads are looser because a recipient reloading a page
+ * must not be locked out of a secret that is about to burn.
+ */
+export const RATE_LIMITS = {
+  write: { limit: 10, periodSeconds: 60 },
+  read: { limit: 60, periodSeconds: 60 }
+};
+
 export const SWEEP_BATCH = 1000;
 export const SWEEP_MAX_BATCHES = 10;

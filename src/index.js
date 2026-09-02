@@ -18,7 +18,7 @@
 import { routeApi } from "./api.js";
 import { isSecretId } from "./ids.js";
 import { deleteExpired } from "./db.js";
-import { SWEEP_BATCH, SWEEP_MAX_BATCHES } from "./limits.js";
+import { SWEEP_BATCH, SWEEP_MAX_BATCHES, RATE_LIMITS } from "./limits.js";
 import { json, text, error, withSecurityHeaders, withPageHeaders } from "./http.js";
 import { TTL_OPTIONS, MAX_CIPHERTEXT_BYTES, MAX_VIEWS_LIMIT, DEFAULT_TTL, DEFAULT_MAX_VIEWS } from "./limits.js";
 
@@ -32,31 +32,40 @@ function serveAsset(request, env, assetPath) {
 /**
  * Per-address flood protection on the API surface.
  *
- * Writing and reading are counted separately: a create is the expensive act and the one
- * that can fill a database, while a recipient reloading a page must not be locked out of
- * a secret that is about to burn.
+ * Writing and reading are counted separately, under different keys: a create is the
+ * expensive act and the one that can fill a database, while a recipient reloading a page
+ * must not be locked out of a secret that is about to burn.
  *
- * The bindings are absent in local dev and in the test runtime, where there is no
- * simulator for them. That is a supported state rather than a gap — no limiter means no
- * limit, which is correct for a machine serving one developer, and the deployed
- * environment always has them.
+ * The binding is absent in the local dev server, where a Durable Object needs no
+ * simulator but a developer serving themselves needs no limiter either. A missing binding
+ * therefore means no limit, which is right for that one case and never true of a
+ * deployment.
  */
 async function enforceRateLimit(request, env, url) {
-  const limiter = request.method === "POST" || request.method === "DELETE" ? env.WRITE_LIMIT : env.READ_LIMIT;
-  if (!limiter) return null;
+  if (!env.RATE_LIMITER) return null;
 
-  // Reading is metered per address; creating is metered per address too, but under its own
-  // namespace so a burst of reads cannot spend a writer's allowance.
+  const writing = request.method === "POST" || request.method === "DELETE";
+  const { limit, periodSeconds } = writing ? RATE_LIMITS.write : RATE_LIMITS.read;
+
+  // Cloudflare sets this at the edge and overwrites whatever the client sent, so it is
+  // the one address a caller cannot choose for themselves.
   const address = request.headers.get("CF-Connecting-IP") ?? "unknown";
-  const scope = url.pathname === "/api/secrets" ? "create" : "secret";
+  const key = `${writing ? "write" : "read"}:${address}`;
 
-  const { success } = await limiter.limit({ key: `${scope}:${address}` });
-  if (success) return null;
+  const counter = env.RATE_LIMITER.get(env.RATE_LIMITER.idFromName(key));
+  const { allowed, retryAfter } = await (
+    await counter.fetch("https://rate-limiter/count", {
+      method: "POST",
+      body: JSON.stringify({ limit, periodSeconds })
+    })
+  ).json();
+
+  if (allowed) return null;
 
   return json(
-    { error: "Too many requests. Try again in a minute.", code: "rate_limited" },
+    { error: "Too many requests. Try again shortly.", code: "rate_limited" },
     429,
-    { "Retry-After": "60" }
+    { "Retry-After": String(retryAfter) }
   );
 }
 
@@ -86,21 +95,23 @@ export default {
       return withPageHeaders(await serveAsset(request, env, "/index.html"));
     }
 
-    // The client reads its own validation rules from the server, so the form and the API
-    // cannot disagree about what is allowed.
-    if (path === "/api/config") {
-      return json({
-        ttlOptions: TTL_OPTIONS,
-        defaultTtl: DEFAULT_TTL,
-        defaultMaxViews: DEFAULT_MAX_VIEWS,
-        maxViews: MAX_VIEWS_LIMIT,
-        maxCiphertextBytes: MAX_CIPHERTEXT_BYTES
-      });
-    }
-
     if (path.startsWith("/api/")) {
       const limited = await enforceRateLimit(request, env, url);
       if (limited) return limited;
+
+      // The client reads its own validation rules from the server, so the form and the
+      // API cannot disagree about what is allowed. Inside the limiter rather than ahead
+      // of it: an endpoint answered before the check is an endpoint that can be hammered
+      // for free.
+      if (path === "/api/config") {
+        return json({
+          ttlOptions: TTL_OPTIONS,
+          defaultTtl: DEFAULT_TTL,
+          defaultMaxViews: DEFAULT_MAX_VIEWS,
+          maxViews: MAX_VIEWS_LIMIT,
+          maxCiphertextBytes: MAX_CIPHERTEXT_BYTES
+        });
+      }
 
       const response = routeApi(request, env, url);
       if (response) return response;
@@ -194,3 +205,5 @@ async function sweep(env) {
   }
   if (total > 0) console.log(`retention: deleted ${total} expired secrets`);
 }
+
+export { RateLimiter } from "./rate-limiter.js";
