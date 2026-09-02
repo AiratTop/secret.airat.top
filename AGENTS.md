@@ -37,8 +37,17 @@ convenient it looks.
   disallowed in `robots.txt`.
 - Keep UI style consistent with the other AiratTop tools.
 
+## Analytics and Third-Party Scripts
+This project carries no analytics and no third-party script, unlike the other AiratTop
+tools which share the GA counter. Do not add one back. On `/{id}#{key}` the fragment is
+the decryption key, and `gtag` reports `document.location.href` as `page_location` — a
+counter there would send every secret's key to Google. Running one on the landing page
+only was considered and rejected: for a secret-sharing tool, "no third-party scripts
+anywhere" is worth more than pageviews, and Cloudflare counts requests server-side without
+a script and without ever seeing a fragment.
+
 ## Open Items
-- `database_id` in `wrangler.jsonc` is a placeholder until `wrangler d1 create secret-airat`
-  has been run.
-- Favicons, `screenshot.png`, site-verification tags and the analytics counter are not in
-  place yet; copy the pattern from `../pass.airat.top/public_html/index.html`.
+- `facebook-domain-verification` in `public_html/index.html` is a placeholder copied from
+  `../pass.airat.top`. That token is per-domain (the other three verification tags are
+  account-wide and shared); it needs one issued for `secret.airat.top`.
+- `public_html/screenshot.png` is referenced by the Open Graph tags and does not exist yet.

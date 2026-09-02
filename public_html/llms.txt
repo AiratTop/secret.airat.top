@@ -20,8 +20,8 @@ Tech stack:
 Cloudflare Workers, Cloudflare D1, HTML, CSS, and vanilla JavaScript.
 
 Privacy:
-No accounts. No plaintext, keys, or passphrases reach the server. Expired rows are
-deleted on a schedule and are unreadable before then.
+No accounts, no analytics, and no third-party scripts. No plaintext, keys, or passphrases
+reach the server. Expired rows are deleted on a schedule and are unreadable before then.
 
 Contact:
 AiratTop - mail@airat.top
