@@ -1,7 +1,8 @@
 # Third-Party Notices
 
-This project bundles no third-party code. The following resources are loaded at runtime
-or used during development, under their own licenses.
+This project bundles no third-party code: nothing from `node_modules` is served to a
+browser, and the pages load only files from this repository. The following are used at
+runtime or during development, under their own licenses.
 
 ## Fonts
 
@@ -10,13 +11,22 @@ or used during development, under their own licenses.
 - **JetBrains Mono** — SIL Open Font License 1.1.
   https://github.com/JetBrains/JetBrainsMono
 
-Both are served by Google Fonts (https://fonts.google.com) and are not redistributed
+Both are referenced from Google Fonts (https://fonts.google.com) and are not redistributed
 from this repository.
 
 ## Development dependencies
 
-- **Wrangler** — Cloudflare's Workers CLI, MIT OR Apache-2.0.
+None of these reach a visitor; they build, test and deploy the project.
+
+- **Wrangler** — Cloudflare's Workers CLI. MIT OR Apache-2.0.
   https://github.com/cloudflare/workers-sdk
+- **@cloudflare/vitest-pool-workers** — runs the tests inside `workerd`. MIT.
+  https://github.com/cloudflare/workers-sdk
+- **@cloudflare/workers-types** — type definitions for the Workers runtime.
+  MIT OR Apache-2.0. https://github.com/cloudflare/workerd
+- **Vitest** — test runner. MIT. https://github.com/vitest-dev/vitest
+- **TypeScript** — used for the test sources and type checking. Apache-2.0.
+  https://github.com/microsoft/TypeScript
 
 Apache-2.0 applies to this project's own code and documentation and does not relicense
 any of the material listed above.

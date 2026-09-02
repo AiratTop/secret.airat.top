@@ -111,9 +111,27 @@ body::before {
 
 /* Header */
 
-.brand { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
-.brand-copy { max-width: 560px; }
-.brand-actions { display: flex; gap: 10px; align-items: center; flex-shrink: 0; }
+/*
+ * Grid rather than a wrapping flex row. As flex, the actions dropped to their own line
+ * whenever the headline was long enough to push the copy column to its max width — which
+ * is the create page, and not the view page, so the two headers disagreed depending on
+ * which one you were looking at. A two-column grid cannot wrap: the copy column shrinks
+ * instead, and the actions stay where they were put.
+ */
+.brand {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 16px;
+}
+.brand-copy { max-width: 560px; min-width: 0; }
+.brand-actions { display: flex; gap: 10px; align-items: center; }
+
+/* Below this the two columns stop fitting honestly, so they stack. */
+@media (max-width: 620px) {
+  .brand { grid-template-columns: 1fr; }
+  .brand-actions { justify-content: flex-start; }
+}
 .brand-eyebrow {
   margin: 0 0 6px;
   font-family: "JetBrains Mono", ui-monospace, monospace;
