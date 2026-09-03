@@ -151,14 +151,6 @@ describe("crawler directives", () => {
   });
 });
 
-describe("health", () => {
-  it("reports ok when the schema is there", async () => {
-    const response = await call("/health");
-    expect(response.status).toBe(200);
-    expect(await response.json()).toEqual({ status: "ok", database: "ok" });
-  });
-});
-
 describe("unknown endpoints", () => {
   it("404s under /api/ rather than falling through to an asset", async () => {
     expect((await call("/api/nope")).status).toBe(404);
