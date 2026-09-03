@@ -13,13 +13,28 @@
     // here — is excluded below for the same reason.
     "types": ["@cloudflare/vitest-pool-workers/types"],
     "strict": true,
+    "noImplicitAny": false,
     "noEmit": true,
     "allowJs": true,
     // The Worker sources are plain JS with no annotations; checking them would be a
     // separate piece of work rather than a switch. The tests are TypeScript and are
     // checked, which is what catches a changed Worker or D1 contract.
-    "checkJs": false,
+    "checkJs": true,
     "skipLibCheck": true
   },
-  "include": ["src/**/*.js", "test/**/*.ts", "worker-configuration.d.ts"]
+  /*
+   * `public_html/crypto.js` and `format.js` are here because they are logic and the tests
+   * import them. `app.js` and `view.js` are not: they are DOM wiring, and checking them
+   * needs `lib: ["dom"]`, which collides with the Workers runtime types in the same
+   * program. Doing that properly means a second tsconfig for the browser half — worth
+   * having, not worth blocking this on. What they mostly get wrong is element ids, and
+   * `test/routing.test.ts` already fails when one of those stops matching its page.
+   */
+  "include": [
+    "src/**/*.js",
+    "public_html/crypto.js",
+    "public_html/format.js",
+    "test/**/*.ts",
+    "worker-configuration.d.ts"
+  ]
 }

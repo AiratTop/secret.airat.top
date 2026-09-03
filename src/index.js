@@ -44,7 +44,14 @@ function serveAsset(request, env, assetPath) {
 async function enforceRateLimit(request, env, url) {
   if (!env.RATE_LIMITER) return null;
 
-  const writing = request.method === "POST" || request.method === "DELETE";
+  /*
+   * Classified by route, not by method. Creating is the only expensive, persistent act
+   * here; revealing is a POST because it has a side effect, and metering it as a write
+   * meant that ten creations from an office locked everyone behind that address out of
+   * opening a secret — the exact failure separate counters exist to prevent. Destroying
+   * is a DELETE and frees space, so it belongs with the cheap operations too.
+   */
+  const writing = request.method === "POST" && url.pathname === "/api/secrets";
   const { limit, periodSeconds } = writing ? RATE_LIMITS.write : RATE_LIMITS.read;
 
   // Cloudflare sets this at the edge and overwrites whatever the client sent, so it is
@@ -69,17 +76,39 @@ async function enforceRateLimit(request, env, url) {
   );
 }
 
+/*
+ * The health probe's answer is cached briefly.
+ *
+ * `/health` sits ahead of the rate limiter, because a status checker that gets a 429
+ * reports an outage that is not happening. That left one unmetered path to D1: this
+ * endpoint queried the database on every request, so it could be used to load the very
+ * thing the limiter protects. Caching bounds it to one query per isolate per interval,
+ * however hard it is called, and ten seconds is far below any useful alerting threshold.
+ */
+const HEALTH_TTL_MS = 10_000;
+
+/** @type {{ at: number, payload: { status: string, database: string } | null, status: number }} */
+let healthCache = { at: 0, payload: null, status: 200 };
+
 async function handleHealth(env) {
+  const now = Date.now();
+  if (healthCache.payload && now - healthCache.at < HEALTH_TTL_MS) {
+    return json(healthCache.payload, healthCache.status);
+  }
+
   try {
     // Reads the table rather than `SELECT 1`, which answers even when no migration has
     // ever run — a Worker deployed ahead of its schema reported healthy right up until
     // the first person tried to store something.
     await env.DB.prepare("SELECT id FROM secrets LIMIT 1").first();
-    return json({ status: "ok", database: "ok" });
+    healthCache = { at: now, payload: { status: "ok", database: "ok" }, status: 200 };
   } catch {
-    // 503 rather than 200-with-a-flag: a status checker should see this as down.
-    return json({ status: "degraded", database: "unavailable" }, 503);
+    // 503 rather than 200-with-a-flag: a status checker should see this as down. Cached
+    // like the healthy answer, so an outage cannot be turned into extra load either.
+    healthCache = { at: now, payload: { status: "degraded", database: "unavailable" }, status: 503 };
   }
+
+  return json(healthCache.payload, healthCache.status);
 }
 
 export default {
@@ -165,12 +194,15 @@ export default {
     }
 
     if (path === "/sitemap.xml") {
-      return new Response(
+      // Built through the helper rather than a bare Response, which is how this one
+      // answer came to be the only HTTPS response on the site without HSTS on it.
+      return text(
         `<?xml version="1.0" encoding="UTF-8"?>\n` +
           `<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">` +
           `<url><loc>https://${env.SITE_HOST}/</loc><changefreq>monthly</changefreq></url>` +
           `</urlset>\n`,
-        { headers: { "Content-Type": "application/xml; charset=utf-8" } }
+        200,
+        { "Content-Type": "application/xml; charset=utf-8" }
       );
     }
 

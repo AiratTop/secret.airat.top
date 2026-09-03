@@ -55,6 +55,11 @@ const CONTENT_SECURITY_POLICY = [
   "upgrade-insecure-requests"
 ].join("; ");
 
+/**
+ * @param {unknown} data
+ * @param {number} [status]
+ * @param {Record<string, string>} [extraHeaders]
+ */
 export function json(data, status = 200, extraHeaders = {}) {
   return new Response(JSON.stringify(data), {
     status,
@@ -66,10 +71,23 @@ export function json(data, status = 200, extraHeaders = {}) {
   });
 }
 
+/**
+ * `code` is optional, and saying so matters: without the annotation its type is inferred
+ * from the default as `undefined`, and every call passing a real one is an error.
+ *
+ * @param {string} message
+ * @param {number} [status]
+ * @param {string} [code]
+ */
 export function error(message, status = 400, code = undefined) {
   return json({ error: message, ...(code ? { code } : {}) }, status);
 }
 
+/**
+ * @param {string} body
+ * @param {number} [status]
+ * @param {Record<string, string>} [extraHeaders]
+ */
 export function text(body, status = 200, extraHeaders = {}) {
   return new Response(body, {
     status,

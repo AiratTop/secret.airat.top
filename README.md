@@ -40,9 +40,10 @@ destroying a burn-after-reading secret on the first mistyped attempt.
 Base URL: `https://secret.airat.top`. No key and no account. Every response is JSON,
 `no-store`, and `noindex`.
 
-Rate limited per caller: 10 writes and 60 reads a minute, answered with `429` and a
-`Retry-After` giving the real remainder of the window. Request bodies are capped at 128 KB
-and must be `application/json`.
+Rate limited per caller: 10 creates a minute, and 60 a minute for everything else —
+revealing included, so a busy creator cannot lock a recipient out of opening a link.
+Refusals are `429` with a `Retry-After` giving the real remainder of the window. Request
+bodies are capped at 128 KB and must be `application/json`.
 
 One thing to understand before reading further: **the API cannot create a usable link on
 its own.** The server never receives a key, so a client must encrypt the secret itself and

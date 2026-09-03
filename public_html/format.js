@@ -7,6 +7,7 @@
  * reader is sitting is a bad way to state one. The values are still local time, since
  * that is the clock the reader is actually looking at.
  */
+/** @param {number} ms */
 export function formatDateTime(ms) {
   const d = new Date(ms);
   const pad = (n) => String(n).padStart(2, "0");
@@ -21,10 +22,17 @@ export function formatDateTime(ms) {
  * to the timestamp rather than instead of it, because "in 4 hours" is unusable for
  * anything you have to plan around and the timestamp alone takes a moment to subtract.
  */
+/**
+ * @param {number} ms
+ * @param {number} [now]
+ */
 export function formatRelative(ms, now = Date.now()) {
   const seconds = Math.round((ms - now) / 1000);
   if (seconds <= 0) return "expired";
 
+  // Annotated: without it these read as (string | number)[] pairs and the arithmetic
+  // below is comparing a number against something that might be a word.
+  /** @type {[string, number][]} */
   const units = [
     ["day", 86400],
     ["hour", 3600],

@@ -66,6 +66,64 @@ describe("flood protection", () => {
    * of reads spend a writer's allowance, and worse, would let a flood of creates lock a
    * recipient out of a secret that is about to expire.
    */
+  /**
+   * The failure this classification exists to prevent, and the one it caused while it
+   * keyed off the method: revealing is a POST, so it counted as a create, and ten links
+   * made from an office locked everyone behind that address out of opening one.
+   */
+  it("lets a recipient open a secret after the create limit is spent", async () => {
+    const address = uniqueAddress();
+    const created = await fromAddress(address, "/api/secrets", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(validBody)
+    });
+    const { id } = (await created.json()) as { id: string };
+
+    let exhausted = false;
+    for (let i = 0; i < 15 && !exhausted; i++) {
+      const response = await fromAddress(address, "/api/secrets", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(validBody)
+      });
+      exhausted = response.status === 429;
+    }
+    expect(exhausted, "the create limit should have been reached").toBe(true);
+
+    const revealed = await fromAddress(address, `/api/secrets/${id}/reveal`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ verifier: "the-right-one" })
+    });
+    expect(revealed.status).toBe(200);
+  });
+
+  it("lets a creator destroy a secret after the create limit is spent", async () => {
+    const address = uniqueAddress();
+    const created = await fromAddress(address, "/api/secrets", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(validBody)
+    });
+    const { id, burnToken } = (await created.json()) as { id: string; burnToken: string };
+
+    for (let i = 0; i < 15; i++) {
+      await fromAddress(address, "/api/secrets", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(validBody)
+      });
+    }
+
+    const destroyed = await fromAddress(address, `/api/secrets/${id}`, {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ burnToken })
+    });
+    expect(destroyed.status).toBe(200);
+  });
+
   it("does not let writes exhaust a reader's allowance", async () => {
     const address = uniqueAddress();
     const created = await fromAddress(address, "/api/secrets", {
