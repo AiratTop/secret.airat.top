@@ -71,12 +71,20 @@ convenient it looks.
   telling them apart makes the endpoint an oracle for which ids were ever issued.
 - Only `/` is indexable. Every other response carries `X-Robots-Tag: noindex` and is
   disallowed in `robots.txt`.
+- `/health` (`src/health.js`) sits ahead of the rate limiter deliberately — a status
+  checker that gets a 429 reports an outage that is not happening — so it must not turn
+  request volume into database load. It caches for ten seconds *and* single-flights: a
+  cache alone is filled only after the query returns, so concurrent probes all miss it and
+  each start a query. The cache is per isolate, so this bounds the load rather than
+  globally limiting it.
 - `verifier` is required on create. The column is nullable only for rows written before
   it existed; accepting a create without one would quietly reintroduce the bug where a
   failed attempt burns a view.
 - Rate limiting lives in `enforceRateLimit` and counts in a Durable Object
   (`src/rate-limiter.js`), one per caller, with separate keys for writes and reads so a
-  flood of creates cannot lock a recipient out of a secret about to expire. **Not**
+  flood of creates cannot lock a recipient out of a secret about to expire. Fixed
+  calendar windows, so ten requests at the end of one window and ten at the start of the
+  next are both allowed — exact within a window, not a rolling limiter. **Not**
   Cloudflare's rate limit binding: it does enforce, but permissively by design — measured
   on the deployed Worker at a limit of 3/minute, 23 of 39 consecutive calls under one key
   were allowed before it started refusing, because the count propagates after the burst

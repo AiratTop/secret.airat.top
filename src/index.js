@@ -20,6 +20,7 @@ import { isSecretId } from "./ids.js";
 import { deleteExpired } from "./db.js";
 import { SWEEP_BATCH, SWEEP_MAX_BATCHES, RATE_LIMITS } from "./limits.js";
 import { json, text, error, withSecurityHeaders, withPageHeaders } from "./http.js";
+import { checkHealth } from "./health.js";
 import { TTL_OPTIONS, MAX_CIPHERTEXT_BYTES, MAX_VIEWS_LIMIT, DEFAULT_TTL, DEFAULT_MAX_VIEWS } from "./limits.js";
 
 /** Serves a file out of `public_html` under a different path than it lives at. */
@@ -76,47 +77,15 @@ async function enforceRateLimit(request, env, url) {
   );
 }
 
-/*
- * The health probe's answer is cached briefly.
- *
- * `/health` sits ahead of the rate limiter, because a status checker that gets a 429
- * reports an outage that is not happening. That left one unmetered path to D1: this
- * endpoint queried the database on every request, so it could be used to load the very
- * thing the limiter protects. Caching bounds it to one query per isolate per interval,
- * however hard it is called, and ten seconds is far below any useful alerting threshold.
- */
-const HEALTH_TTL_MS = 10_000;
-
-/** @type {{ at: number, payload: { status: string, database: string } | null, status: number }} */
-let healthCache = { at: 0, payload: null, status: 200 };
-
-async function handleHealth(env) {
-  const now = Date.now();
-  if (healthCache.payload && now - healthCache.at < HEALTH_TTL_MS) {
-    return json(healthCache.payload, healthCache.status);
-  }
-
-  try {
-    // Reads the table rather than `SELECT 1`, which answers even when no migration has
-    // ever run — a Worker deployed ahead of its schema reported healthy right up until
-    // the first person tried to store something.
-    await env.DB.prepare("SELECT id FROM secrets LIMIT 1").first();
-    healthCache = { at: now, payload: { status: "ok", database: "ok" }, status: 200 };
-  } catch {
-    // 503 rather than 200-with-a-flag: a status checker should see this as down. Cached
-    // like the healthy answer, so an outage cannot be turned into extra load either.
-    healthCache = { at: now, payload: { status: "degraded", database: "unavailable" }, status: 503 };
-  }
-
-  return json(healthCache.payload, healthCache.status);
-}
-
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
     const path = url.pathname;
 
-    if (path === "/health") return handleHealth(env);
+    if (path === "/health") {
+      const { payload, status } = await checkHealth(env);
+      return json(payload, status);
+    }
 
     // `html_handling` is off, so the asset server maps no path to a file on its own and
     // the root has to be spelled out. This is the one response with no `noindex` on it.
