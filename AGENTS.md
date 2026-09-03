@@ -22,6 +22,12 @@ browser, shared as a link, and destroyed after it is read or when its timer runs
 - Closest sibling project for architecture: `../orator-space` (D1, Crockford base32 ids).
 - Closest sibling project for design language: `../pass.airat.top`.
 
+## Working On This Repository
+`main` is protected by a repository ruleset: no direct pushes, no force pushes, no
+deletion, linear history, and a pull request whose `ci` check has passed. There are no
+bypass actors, so this applies to the owner too. Work on a branch, open a pull request,
+let `ci` go green, then merge — a push straight to `main` is rejected by the server.
+
 ## Structure
 - Worker entry: `src/index.js` — routing, the `/{id}` page, robots/sitemap, cron sweep.
 - `src/api.js` JSON handlers and input validation; `src/db.js` every D1 statement;
