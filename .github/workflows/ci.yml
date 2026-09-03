@@ -1,21 +1,26 @@
-# Tests and types on every pull request, and on main.
+# Tests and types on every pull request.
 #
 # Separate from deploy.yml on purpose: this one runs on untrusted contributions, so it is
 # the workflow that must never see a Cloudflare credential. It has none, and needs none —
 # the suite runs against a local D1 and `wrangler types` reads a local config file.
 #
 # It is also the check to make required once `main` is protected.
+#
+# Pull requests only. It ran on main as well until that turned out to be two workflows
+# racing to do the same work: deploy.yml runs the same test and typecheck steps before it
+# touches Cloudflare, so a green tick here on main proved nothing that a failed deploy
+# would not have caught anyway — and it ran in parallel rather than in front, so it was
+# not a gate either.
 
 name: ci
 
 on:
   pull_request:
-  push:
-    branches: [main]
 
 permissions:
   contents: read
 
+# A superseded pull-request run is wasted work, unlike a superseded deploy.
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
