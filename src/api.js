@@ -23,7 +23,12 @@ import {
 
 const BASE64URL = /^[A-Za-z0-9_-]+$/;
 
-/** Maps a refused body to its response, or returns the parsed body. */
+/**
+ * Maps a refused body to its response, or returns the parsed body.
+ *
+ * @param {Request} request
+ * @returns {Promise<{ ok: true, value: any } | { ok: false, response: Response }>}
+ */
 async function body(request) {
   const result = await readJson(request);
   if (result.ok) return { ok: true, value: result.body };
@@ -47,7 +52,18 @@ function isLabelBlob(value) {
   return typeof value === "string" && value.length <= MAX_LABEL_LENGTH && LABEL_BLOB.test(value);
 }
 
-/** Rejects the body with a reason, or returns the normalised secret fields. */
+/**
+ * Rejects the body with a reason, or returns the normalised secret fields.
+ *
+ * The arms are spelled out so `ok` is a literal rather than a widened boolean; without
+ * that a caller cannot narrow on it, and every read of `value` after the guard is an
+ * error the guard has already ruled out.
+ *
+ * @typedef {{ ciphertext: string, iv: string, kdfSalt: string|null, label: string|null,
+ *             verifier: string, ttl: number, maxViews: number }} NewSecret
+ * @param {any} body
+ * @returns {{ ok: true, value: NewSecret } | { ok: false, message: string }}
+ */
 function validateCreate(body) {
   if (!isBase64Url(body.ciphertext, MAX_CIPHERTEXT_BYTES)) {
     return { ok: false, message: `ciphertext must be base64url and at most ${MAX_CIPHERTEXT_BYTES} characters.` };

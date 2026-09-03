@@ -53,7 +53,9 @@ you think one is worse than stated, but they are known:
   allowances, and a caller behind a shared NAT shares one. It is flood protection, not a
   quota and not an identity.
 - **Storage is not quota'd.** The limits above bound how fast the database can be filled,
-  not how large it can get.
+  not how large it can get: ten creates a minute at the maximum size is roughly 900 MiB a
+  day from one address. Per-address flood rate is mitigated; database-capacity exhaustion
+  is an accepted residual risk until a global storage or write quota exists.
 
 ## Supported Versions
 

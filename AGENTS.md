@@ -36,7 +36,9 @@ browser, shared as a link, and destroyed after it is read or when its timer runs
 - `POST /api/secrets` store ciphertext; `GET /api/secrets/{id}` metadata, side-effect free;
   `POST /api/secrets/{id}/reveal` consume a view; `DELETE /api/secrets/{id}` needs the burn
   token; `GET /api/config` limits; `GET /health` liveness including a D1 round trip.
-- No key, no account, no rate limit. Every response is JSON, `no-store` and `noindex`.
+- No key and no account. Rate limited per address: 10 creates a minute, 60 of everything
+  else. Bodies capped at 128 KB and must be `application/json`. Every response is JSON,
+  `no-store` and `noindex`.
 - The API cannot produce a usable link on its own: the caller encrypts, and the key goes
   in the fragment client-side. `public_html/crypto.js` is the reference implementation.
 - Documented with worked examples in `README.md`; the request and response bodies there
@@ -83,7 +85,12 @@ convenient it looks.
   while reading, because `request.json()` buffers everything first.
 - `npm run typecheck` regenerates `worker-configuration.d.ts` with `wrangler types` and
   then runs `tsc`. That file is generated from `wrangler.jsonc` and is not committed, so
-  the binding types cannot drift from the bindings that deploy.
+  the binding types cannot drift from the bindings that deploy. `checkJs` is on with
+  `noImplicitAny` off, which is a real but partial check: it catches a property typo on a
+  typed value and a union read without narrowing, and it does not catch misuse through an
+  unannotated parameter, because that parameter is `any`. `app.js` and `view.js` are out
+  of the program entirely — they need `lib: ["dom"]`, which collides with the Workers
+  types; `test/routing.test.ts` covers what they mostly get wrong, which is element ids.
 - Keep UI style consistent with the other AiratTop tools.
 
 ## Analytics and Third-Party Scripts

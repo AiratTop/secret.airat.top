@@ -12,17 +12,10 @@
  *
  * One object per key, addressed by `idFromName`, so "ten writes a minute" means ten —
  * not ten per data centre, which is the accuracy the binding trades away.
- *
- * The count lives in memory rather than in storage. An object is evicted when idle, which
- * resets its window and makes the limiter permissive for someone who stopped and came
- * back. That is the harmless direction: a caller flooding keeps their own object alive,
- * which is precisely the case this exists for, and the alternative is a storage write on
- * every request to defend against nobody.
  */
 export class RateLimiter {
-  constructor() {
-    this.window = -1;
-    this.count = 0;
+  constructor(ctx) {
+    this.ctx = ctx;
   }
 
   async fetch(request) {
@@ -32,15 +25,38 @@ export class RateLimiter {
     const now = Date.now();
     const window = Math.floor(now / periodMs);
 
-    if (window !== this.window) {
-      this.window = window;
-      this.count = 0;
-    }
-    this.count += 1;
+    /*
+     * The count is in storage, not in an instance field.
+     *
+     * It was a field until an audit pointed out what that costs: an object with nothing
+     * to do is evicted after seconds of idleness, the constructor runs again on the next
+     * request, and the counter is back at zero inside a window that has not ended. Ten
+     * writes, pause, ten more — the limit was a suggestion for anyone willing to wait.
+     *
+     * Durable Object storage survives that, and reads and writes to an object's own
+     * storage are cheap and local. Requests to one object are also gated, so the
+     * read-then-write below cannot interleave with itself.
+     */
+    const stored = await this.ctx.storage.get("counter");
+    const count = (stored && stored.window === window ? stored.count : 0) + 1;
+    await this.ctx.storage.put("counter", { window, count });
 
-    const allowed = this.count <= limit;
+    /*
+     * Storage now outlives the object, which means one row per address that has ever
+     * called the API and no reason for any of them to go away. The alarm is the cleanup:
+     * two windows after the last request, everything this object holds is deleted. A
+     * caller who returns is counted from zero, which is correct — their window is long
+     * over — and a caller who never returns leaves nothing behind.
+     */
+    await this.ctx.storage.setAlarm(now + periodMs * 2);
+
+    const allowed = count <= limit;
     const retryAfter = Math.max(1, Math.ceil(((window + 1) * periodMs - now) / 1000));
 
     return Response.json({ allowed, retryAfter });
+  }
+
+  async alarm() {
+    await this.ctx.storage.deleteAll();
   }
 }
