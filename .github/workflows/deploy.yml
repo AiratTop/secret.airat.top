@@ -43,8 +43,11 @@ jobs:
 
       - run: npm ci
 
-      # Before anything is touched in Cloudflare. The suite runs in workerd against a
-      # local D1, so a failure here is a real failure rather than a mock disagreeing.
+      # Before anything is touched in Cloudflare, and the only gate on a push to main —
+      # ci.yml deliberately does not run here, because two workflows running the same
+      # steps in parallel is duplicated work and gates nothing. The suite runs in workerd
+      # against a local D1, so a failure here is a real failure rather than a mock
+      # disagreeing.
       - name: test
         run: npm test
 
