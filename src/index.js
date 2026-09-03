@@ -19,7 +19,7 @@ import { routeApi } from "./api.js";
 import { isSecretId } from "./ids.js";
 import { deleteExpired } from "./db.js";
 import { SWEEP_BATCH, SWEEP_MAX_BATCHES, RATE_LIMITS } from "./limits.js";
-import { json, text, error, withSecurityHeaders, withPageHeaders } from "./http.js";
+import { json, text, error, redirect, withSecurityHeaders, withPageHeaders } from "./http.js";
 import { checkHealth } from "./health.js";
 import { TTL_OPTIONS, MAX_CIPHERTEXT_BYTES, MAX_VIEWS_LIMIT, DEFAULT_TTL, DEFAULT_MAX_VIEWS } from "./limits.js";
 
@@ -124,7 +124,7 @@ export default {
     if (idCandidate.length > 0 && !idCandidate.includes("/") && isSecretId(idCandidate.toUpperCase())) {
       // Crockford base32 is case-insensitive, but one secret should have one URL.
       if (idCandidate !== idCandidate.toUpperCase()) {
-        return Response.redirect(`${url.origin}/${idCandidate.toUpperCase()}${url.search}`, 301);
+        return redirect(`${url.origin}/${idCandidate.toUpperCase()}${url.search}`);
       }
       const response = await serveAsset(request, env, "/view.html");
       return withSecurityHeaders(response);

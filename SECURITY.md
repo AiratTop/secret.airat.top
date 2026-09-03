@@ -52,6 +52,10 @@ you think one is worse than stated, but they are known:
   minute are counted exactly, per caller, but a caller with many addresses has many
   allowances, and a caller behind a shared NAT shares one. It is flood protection, not a
   quota and not an identity.
+- **HSTS does not cover a first visit.** The header tells a browser to use HTTPS from
+  then on; it cannot speak for a request made before the browser has ever seen it, and
+  this domain is not in the preload list. Every link the service produces is already
+  `https://`, so reaching it over plaintext takes retyping one by hand.
 - **Storage is not quota'd.** The limits above bound how fast the database can be filled,
   not how large it can get: ten creates a minute at the maximum size is roughly 900 MiB a
   day from one address. Per-address flood rate is mitigated; database-capacity exhaustion
