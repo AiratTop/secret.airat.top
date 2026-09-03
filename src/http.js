@@ -23,6 +23,11 @@ const SECURITY_HEADERS = {
    * that nothing ever should over plaintext. Deliberately no `preload`: that is a
    * commitment for the whole of airat.top, made from a hardcoded string in one Worker,
    * and it is not this project's to make.
+   *
+   * What this does not cover, and preloading would: the very first `http://` request a
+   * browser makes to this host, before it has ever seen this header. Accepted rather than
+   * solved — every link the service produces is already `https://`, so reaching the site
+   * over plaintext at all takes someone retyping one by hand.
    */
   "Strict-Transport-Security": "max-age=63072000; includeSubDomains"
 };
@@ -95,6 +100,21 @@ export function text(body, status = 200, extraHeaders = {}) {
   });
 }
 
+/**
+ * A redirect that carries the same headers as everything else.
+ *
+ * `Response.redirect` produces a bare response, which made the lowercase-id redirect the
+ * one reply on the site with no HSTS, no `no-store` and no `noindex` on it. Nothing leaks
+ * through it — the page it points at is protected — but "every response carries these" is
+ * either true or it is not a rule.
+ */
+export function redirect(location, status = 301) {
+  return new Response(null, {
+    status,
+    headers: { Location: location, ...SECURITY_HEADERS }
+  });
+}
+
 /** Copies an asset response through, adding the same headers. */
 export function withSecurityHeaders(response) {
   const headers = new Headers(response.headers);
@@ -127,8 +147,20 @@ export const MAX_BODY_BYTES = 128 * 1024;
 
 /** Thrown-free body reader. Returns a reason instead of a body when it will not read one. */
 export async function readJson(request) {
-  const contentType = request.headers.get("Content-Type") ?? "";
-  if (!contentType.toLowerCase().includes("application/json")) {
+  /*
+   * The media type is compared, not searched for.
+   *
+   * `includes("application/json")` accepted `text/plain;foo=application/json`, whose
+   * actual essence is `text/plain` — a CORS-safelisted value, which means a browser sends
+   * it cross-site with no preflight to refuse. Another origin could not read the reply,
+   * but the write had already happened: every visitor to their page becomes an address
+   * creating secrets here, spending their own allowance and this database's room.
+   *
+   * Requiring the real essence puts the request back behind a preflight, which this
+   * Worker answers to no one.
+   */
+  const mediaType = (request.headers.get("Content-Type") ?? "").split(";", 1)[0].trim().toLowerCase();
+  if (mediaType !== "application/json") {
     return { ok: false, reason: "type" };
   }
 

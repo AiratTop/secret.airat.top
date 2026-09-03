@@ -205,6 +205,42 @@ describe("request bodies", () => {
     expect(response.status).toBe(415);
   });
 
+  /**
+   * The header is compared, not searched. `text/plain;foo=application/json` passed a
+   * substring check while its actual essence stayed `text/plain` — CORS-safelisted, so a
+   * browser sends it cross-site with no preflight to refuse. The reply is unreadable to
+   * the other origin, but the write has already landed, and every visitor to their page
+   * is an address creating secrets here.
+   */
+  it.each([
+    "text/plain;foo=application/json",
+    "text/plain; charset=application/json",
+    "multipart/form-data; boundary=application/json",
+    "application/json-patch+json",
+    "xapplication/json"
+  ])("refuses %s, whose media type is not application/json", async (contentType) => {
+    const response = await call("/api/secrets", {
+      method: "POST",
+      headers: { "Content-Type": contentType },
+      body: JSON.stringify(validBody)
+    });
+    expect(response.status).toBe(415);
+  });
+
+  it.each([
+    "application/json",
+    "application/json; charset=utf-8",
+    "APPLICATION/JSON",
+    "  application/json  "
+  ])("accepts %s", async (contentType) => {
+    const response = await call("/api/secrets", {
+      method: "POST",
+      headers: { "Content-Type": contentType },
+      body: JSON.stringify(validBody)
+    });
+    expect(response.status).toBe(201);
+  });
+
   it("still accepts a body comfortably inside the cap", async () => {
     expect((await post("/api/secrets", validBody)).status).toBe(201);
   });
