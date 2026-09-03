@@ -26,7 +26,10 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  check:
+  # Job name is `ci` because the branch ruleset requires this exact check, and because
+  # every other AiratTop repository names it that. A required check that names a job which
+  # does not exist never reports, and a pull request waits on it forever.
+  ci:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

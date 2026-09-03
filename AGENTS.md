@@ -13,7 +13,9 @@ browser, shared as a link, and destroyed after it is read or when its timer runs
   typecheck itself before touching Cloudflare, and is the only gate on a push to `main`.
   `.github/workflows/ci.yml` runs the same checks on pull requests and holds no
   credential, which is what makes it safe on an untrusted contribution and the right check
-  to require once `main` is protected.
+  to require once `main` is protected. Its job is named `ci` because that is the context
+  the branch ruleset requires; renaming the job silently breaks every pull request, which
+  then waits forever on a check that will never report.
 - Custom domain: attached in the Cloudflare dashboard, not declared in `wrangler.jsonc`,
   as in every other project here. This keeps the CI token to Workers Scripts and D1, with
   no zone-level write access.
