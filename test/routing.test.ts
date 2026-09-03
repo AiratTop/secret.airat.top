@@ -42,6 +42,13 @@ describe("the secret page", () => {
     const response = await call(`/${id.toLowerCase()}`);
     expect(response.status).toBe(301);
     expect(response.headers.get("location")).toBe(`${BASE}/${id}`);
+
+    // `Response.redirect` produces a bare response, which made this the one reply on the
+    // site without the shared headers on it.
+    expect(response.headers.get("strict-transport-security")).toContain("max-age");
+    expect(response.headers.get("x-robots-tag")).toContain("noindex");
+    expect(response.headers.get("cache-control")).toContain("no-store");
+    expect(response.headers.get("referrer-policy")).toBe("no-referrer");
   });
 
   it("does not treat a non-id path as a secret", async () => {
