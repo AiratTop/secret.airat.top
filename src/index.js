@@ -21,6 +21,7 @@ import { deleteExpired } from "./db.js";
 import { SWEEP_BATCH, SWEEP_MAX_BATCHES, RATE_LIMITS } from "./limits.js";
 import { json, text, error, redirect, withSecurityHeaders, withPageHeaders } from "./http.js";
 import { checkHealth } from "./health.js";
+import { rateLimitBucket } from "./address.js";
 import { TTL_OPTIONS, MAX_CIPHERTEXT_BYTES, MAX_VIEWS_LIMIT, DEFAULT_TTL, DEFAULT_MAX_VIEWS } from "./limits.js";
 
 /** Serves a file out of `public_html` under a different path than it lives at. */
@@ -56,8 +57,10 @@ async function enforceRateLimit(request, env, url) {
   const { limit, periodSeconds } = writing ? RATE_LIMITS.write : RATE_LIMITS.read;
 
   // Cloudflare sets this at the edge and overwrites whatever the client sent, so it is
-  // the one address a caller cannot choose for themselves.
-  const address = request.headers.get("CF-Connecting-IP") ?? "unknown";
+  // the one address a caller cannot choose for themselves — within its own block. IPv6 is
+  // counted per /64, the smallest block a subscriber is given; counted per address, one
+  // caller could rotate through 2^64 of them with a fresh allowance each time.
+  const address = rateLimitBucket(request.headers.get("CF-Connecting-IP") ?? "unknown");
   const key = `${writing ? "write" : "read"}:${address}`;
 
   const counter = env.RATE_LIMITER.get(env.RATE_LIMITER.idFromName(key));

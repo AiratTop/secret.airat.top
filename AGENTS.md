@@ -32,7 +32,11 @@ let `ci` go green, then merge — a push straight to `main` is rejected by the s
 - Worker entry: `src/index.js` — routing, the `/{id}` page, robots/sitemap, cron sweep.
 - `src/api.js` JSON handlers and input validation; `src/db.js` every D1 statement;
   `src/http.js` response helpers that put `noindex` and `no-store` on by default;
-  `src/limits.js` the numbers both the client and the server validate against.
+  `src/limits.js` the numbers both the client and the server validate against;
+  `src/address.js` the rate-limit bucket (IPv6 counted per /64).
+- Dev dependencies: `vitest-pool-workers` pins its own `wrangler`/`miniflare`;
+  `overrides` in `package.json` lifts their `undici` and `sharp` past known advisories.
+  Drop an override once the pool ships versions that no longer need it.
 - Identifiers: `src/ids.js` — UUIDv7 as 26-char Crockford base32.
 - Schema: `migrations/`, applied with `wrangler d1 migrations apply DB`.
 - Static UI: `public_html/` — `index.html` + `app.js` create, `view.html` + `view.js`
@@ -48,7 +52,8 @@ let `ci` go green, then merge — a push straight to `main` is rejected by the s
 - `POST /api/secrets` store ciphertext; `GET /api/secrets/{id}` metadata, side-effect free;
   `POST /api/secrets/{id}/reveal` consume a view; `DELETE /api/secrets/{id}` needs the burn
   token; `GET /api/config` limits; `GET /health` liveness including a D1 round trip.
-- No key and no account. Rate limited per address: 10 creates a minute, 60 of everything
+- No key and no account. Rate limited per IPv4 address or IPv6 /64 (`src/address.js`):
+  10 creates a minute, 60 of everything
   else. Bodies capped at 128 KB and must be `application/json`. Every response is JSON,
   `no-store` and `noindex`.
 - The API cannot produce a usable link on its own: the caller encrypts, and the key goes
