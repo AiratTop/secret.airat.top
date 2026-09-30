@@ -49,7 +49,8 @@ you think one is worse than stated, but they are known:
   allowance, and whether a passphrase is set are stored in the clear. The identifier
   encodes its own creation time.
 - **Rate limiting is per address, and an address is cheap.** Ten writes and sixty reads a
-  minute are counted exactly, per caller, but a caller with many addresses has many
+  minute are counted exactly per IPv4 address or IPv6 /64 (a subscriber's smallest
+  block, so rotating within it does not help), but a caller with many addresses has many
   allowances, and a caller behind a shared NAT shares one. It is flood protection, not a
   quota and not an identity.
 - **HSTS does not cover a first visit.** The header tells a browser to use HTTPS from

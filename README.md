@@ -40,7 +40,7 @@ destroying a burn-after-reading secret on the first mistyped attempt.
 Base URL: `https://secret.airat.top`. No key and no account. Every response is JSON,
 `no-store`, and `noindex`.
 
-Rate limited per caller: 10 creates a minute, and 60 a minute for everything else —
+Rate limited per IPv4 address or IPv6 /64: 10 creates a minute, and 60 a minute for everything else —
 revealing included, so a busy creator cannot lock a recipient out of opening a link.
 Refusals are `429` with a `Retry-After` giving the real remainder of the window. Request
 bodies are capped at 128 KB and must be `application/json`.
