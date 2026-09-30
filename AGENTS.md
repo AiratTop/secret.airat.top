@@ -114,8 +114,9 @@ convenient it looks.
 - Keep UI style consistent with the other AiratTop tools.
 
 ## Analytics and Third-Party Scripts
-This project carries no analytics and no third-party script, unlike the other AiratTop
-tools which share the GA counter. Do not add one back. On `/{id}#{key}` the fragment is
+This project carries no analytics and no third-party script, and since 2026-09-30 neither
+does any other AiratTop tool (the GA counter stays only on the public pages and the
+blog). Do not add one back. On `/{id}#{key}` the fragment is
 the decryption key, and `gtag` reports `document.location.href` as `page_location` — a
 counter there would send every secret's key to Google. Running one on the landing page
 only was considered and rejected: for a secret-sharing tool, "no third-party scripts
